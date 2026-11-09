@@ -1,0 +1,64 @@
+# Mantido para reutilizar o volume MySQL já existente sem recriá-lo.
+name: aprendizagem-colaborativa
+
+services:
+  mysql:
+    image: mysql:8.4.13
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?Defina MYSQL_DATABASE no arquivo .env}
+      MYSQL_USER: ${MYSQL_USER:?Defina MYSQL_USER no arquivo .env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Defina MYSQL_PASSWORD no arquivo .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Defina MYSQL_ROOT_PASSWORD no arquivo .env}
+    ports:
+      - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping --host=127.0.0.1 --user=root --password=$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  api:
+    image: conectacampus-api:local
+    container_name: conectacampus-api
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: "8080"
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?Defina MYSQL_DATABASE no arquivo .env}
+      MYSQL_USER: ${MYSQL_USER:?Defina MYSQL_USER no arquivo .env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Defina MYSQL_PASSWORD no arquivo .env}
+      JWT_ISSUER: ${JWT_ISSUER:?Defina JWT_ISSUER no arquivo .env}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:?Defina JWT_AUDIENCE no arquivo .env}
+      JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:?Defina JWT_SIGNING_KEY no arquivo .env}
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-60}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:5077:8080"
+
+  web:
+    image: conectacampus-web:local
+    container_name: conectacampus-web
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ""
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:5173:80"
+
+volumes:
+  mysql_data:

@@ -1,0 +1,21 @@
+# Configurações locais dos agentes
+.codex/
+
+# Documentos e prompts de referência
+.arquivos/
+arquivos/
+
+# Variáveis de ambiente
+.env
+**/.env
+
+# .NET
+**/bin/
+**/obj/
+.vs/
+
+# Node.js
+**/node_modules/
+**/dist/
+
+docs/
