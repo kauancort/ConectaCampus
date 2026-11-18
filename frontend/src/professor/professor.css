@@ -1,0 +1,39 @@
+.professor-registration .professor-header { justify-content: space-between; }
+.professor-registration .area-label {
+  color: #3f6c60;
+  font-size: .88rem;
+  font-weight: 700;
+  margin-right: auto;
+}
+.professor-registration .professor-content { max-width: 920px; }
+.professor-registration .registration-panel { padding: clamp(18px, 4vw, 32px); }
+.professor-registration .form-intro { margin-bottom: 24px; }
+.professor-registration .form-intro h2 { color: #173d35; }
+.professor-registration .form-intro p { color: #61766f; margin: 7px 0 0; font-size: .9rem; }
+.professor-registration input[aria-invalid="true"],
+.professor-registration select[aria-invalid="true"],
+.professor-registration textarea[aria-invalid="true"] { border-color: #b84945; }
+.professor-registration .field-error { color: #a33a36; font-size: .8rem; font-weight: 550; }
+.professor-registration .room-capacity { color: #5b716a; font-size: .8rem; font-weight: 500; line-height: 1.4; }
+.professor-registration .time-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.professor-registration .submit-button { min-width: 190px; display: inline-flex; justify-content: center; align-items: center; gap: 9px; }
+.professor-registration .spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ffffff80;
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: professor-spin .75s linear infinite;
+}
+@keyframes professor-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 560px) {
+  .professor-registration .professor-header { align-items: center; }
+  .professor-registration .area-label { order: 2; flex-basis: 100%; }
+  .professor-registration .time-fields { grid-template-columns: 1fr; }
+  .professor-registration .form-actions, .professor-registration .submit-button { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .professor-registration .spinner { animation-duration: 1.5s; }
+}
