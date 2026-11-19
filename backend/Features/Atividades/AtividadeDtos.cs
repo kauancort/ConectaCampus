@@ -1,5 +1,28 @@
 namespace AprendizagemColaborativa.Api.Features.Atividades;
 
+public sealed record CriarAtividadeRequest(
+    string? Tema,
+    string? Descricao,
+    string? Modalidade,
+    string? TipoSala,
+    string? Inicio,
+    string? Fim);
+
+public sealed record TipoSalaResponse(string Tipo, int Capacidade);
+
+public sealed record SalaAtividadeResponse(Guid Id, string Nome, string Tipo, int Capacidade);
+
+public sealed record AtividadeResponse(
+    Guid Id,
+    string Tema,
+    string Descricao,
+    string Modalidade,
+    SalaAtividadeResponse Sala,
+    DateOnly Data,
+    DateTimeOffset Inicio,
+    DateTimeOffset Fim,
+    string Status);
+
 public sealed record AtividadeRequest(
     string? Tipo,
     string? Tema,
