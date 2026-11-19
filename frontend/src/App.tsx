@@ -1,163 +1,301 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { apiRequest, type Activity, type ActivityDetails, type ActivityInput, type Enrollment, type LoginResponse, type Participant } from './api'
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
+import { ApiError, apiRequest, type Activity, type Enrollment, type LoginResponse, type Seat, type SeatMap } from './api'
 import { useAuth } from './auth'
 
-type Page = 'catalogo' | 'publicar' | 'minhas' | 'inscricoes' | 'conta'
-type FormState = { tipo: string; tema: string; descricao: string; nivel: string; dataHora: string; local: string; numeroDeVagas: string }
-const emptyForm: FormState = { tipo: 'aula', tema: '', descricao: '', nivel: '', dataHora: '', local: '', numeroDeVagas: '10' }
+type Page = 'catalogo' | 'detalhe' | 'assentos' | 'inscricoes' | 'conta'
 
-function dateLabel(value: string) {
-  return new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
-}
-
-function localDateTimeInput(value: string) {
+function dateLabel(value: string | null | undefined) {
+  if (!value) return 'Não informada'
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-')
+    return `${day}/${month}/${year}`
+  }
   const date = new Date(value)
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
+  return Number.isNaN(date.getTime()) ? 'Não informada' : date.toLocaleDateString('pt-BR')
 }
 
-function formData(value: FormState): ActivityInput {
-  return { ...value, dataHora: new Date(value.dataHora).toISOString(), numeroDeVagas: Number(value.numeroDeVagas) }
+function timeLabel(value: string | null | undefined) {
+  if (!value) return 'Não informado'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime())
+    ? 'Não informado'
+    : date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
+
+function scheduleLabel(start: string | null | undefined, end: string | null | undefined) {
+  return `${dateLabel(start)} · ${timeLabel(start)}${end ? `–${timeLabel(end)}` : ''}`
+}
+
+function titleCase(value: string) {
+  return value ? `${value.slice(0, 1).toUpperCase()}${value.slice(1).toLowerCase()}` : 'Não informado'
 }
 
 export default function App() {
   const { token, student, signIn, signOut, api } = useAuth()
   const [page, setPage] = useState<Page>('catalogo')
   const [activities, setActivities] = useState<Activity[]>([])
-  const [mine, setMine] = useState<Activity[]>([])
+  const [theme, setTheme] = useState('')
+  const [catalogLoading, setCatalogLoading] = useState(true)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [seatLoading, setSeatLoading] = useState(false)
+  const [confirmingSeat, setConfirmingSeat] = useState(false)
+  const [enrollmentsLoading, setEnrollmentsLoading] = useState(false)
+  const [selected, setSelected] = useState<Activity | null>(null)
+  const [seatMap, setSeatMap] = useState<SeatMap | null>(null)
+  const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null)
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
-  const [selected, setSelected] = useState<ActivityDetails | null>(null)
-  const [participants, setParticipants] = useState<Participant[] | null>(null)
-  const [participantsActivityId, setParticipantsActivityId] = useState<string | null>(null)
-  const [form, setForm] = useState<FormState>(emptyForm)
-  const [editing, setEditing] = useState<string | null>(null)
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
   const [authForm, setAuthForm] = useState({ name: '', email: '', course: '', password: '' })
-  const [filters, setFilters] = useState({ tema: '', tipo: '', nivel: '', data: '' })
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const [loading, setLoading] = useState(false)
 
-  const message = <Args extends unknown[],>(action: (...args: Args) => Promise<void>) => async (...args: Args) => {
-    setError(''); setNotice(''); setLoading(true)
-    try { await action(...args) } catch (e) { setError(e instanceof Error ? e.message : 'Ocorreu um erro.') }
-    finally { setLoading(false) }
-  }
+  const clearFeedback = () => { setError(''); setNotice('') }
 
-  const loadCatalog = async () => {
-    const query = new URLSearchParams()
-    Object.entries(filters).forEach(([key, value]) => { if (value) query.set(key, value) })
-    const queryString = query.toString()
-    const list = await api<Activity[]>(`/api/atividades${queryString ? `?${queryString}` : ''}`)
-    setActivities(list)
-  }
-  const loadPrivate = async () => {
-    if (!token) return
-    const [mineList, ownEnrollments] = await Promise.all([
-      api<Activity[]>('/api/atividades/minhas'),
-      api<Enrollment[]>('/api/inscricoes/me'),
-    ])
-    setMine(mineList); setEnrollments(ownEnrollments)
-  }
-
-  useEffect(() => { void message(loadCatalog)() }, [])
-  useEffect(() => { if (token) void message(loadPrivate)(); else { setMine([]); setEnrollments([]) } }, [token])
-
-  const enrolledActivityIds = useMemo(() => new Set(enrollments.filter(x => x.status === 'ativa').map(x => x.atividadeId)), [enrollments])
-  const nav: { id: Page; label: string }[] = [
-    { id: 'catalogo', label: 'Explorar atividades' },
-    ...(token ? [{ id: 'publicar' as Page, label: 'Publicar' }, { id: 'minhas' as Page, label: 'Minhas atividades' }, { id: 'inscricoes' as Page, label: 'Minhas inscrições' }] : []),
-  ]
-
-  const selectActivity = (id: string) => message(async () => {
-    const detail = await api<ActivityDetails>(`/api/atividades/${id}`)
-    setSelected(detail); setParticipants(null); setParticipantsActivityId(null); setPage('catalogo')
-  })
-  const submitAuth = message(async (event?: FormEvent) => {
-    event?.preventDefault()
-    if (authMode === 'register') {
-      await apiRequest('/api/auth/register', { method: 'POST', body: JSON.stringify({ name: authForm.name, email: authForm.email, course: authForm.course, password: authForm.password }) })
-      setNotice('Cadastro realizado. Entre com seu e-mail e senha.'); setAuthMode('login'); return
+  const loadCatalog = async (search = theme) => {
+    setCatalogLoading(true)
+    clearFeedback()
+    try {
+      const query = search.trim() ? `?tema=${encodeURIComponent(search.trim())}` : ''
+      const list = await apiRequest<Activity[]>(`/api/atividades${query}`)
+      setActivities(list.filter(activity => activity.status === 'publicada'))
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Não foi possível carregar as atividades.')
+    } finally {
+      setCatalogLoading(false)
     }
-    const result = await apiRequest<LoginResponse>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: authForm.email, password: authForm.password }) })
-    signIn(result.accessToken, result.student); setPage('catalogo'); setNotice(`Bem-vindo(a), ${result.student.name}.`)
-  })
-  const saveActivity = message(async (event?: FormEvent) => {
-    event?.preventDefault()
-    const input = formData(form)
-    if (editing) await api(`/api/atividades/${editing}`, { method: 'PUT', body: JSON.stringify(input) })
-    else await api('/api/atividades', { method: 'POST', body: JSON.stringify(input) })
-    setNotice(editing ? 'Atividade atualizada.' : 'Atividade publicada.')
-    setForm(emptyForm); setEditing(null); setPage('minhas'); await loadPrivate(); await loadCatalog()
-  })
-  const enroll = (activity: ActivityDetails) => message(async () => {
-    await api(`/api/atividades/${activity.id}/inscricoes`, { method: 'POST' })
-    setNotice('Inscrição realizada.'); await loadPrivate()
-  })
-  const cancelEnrollment = (activityId: string) => message(async () => {
-    await api(`/api/atividades/${activityId}/inscricoes/me`, { method: 'DELETE' })
-    setNotice('Inscrição cancelada.'); await loadPrivate()
-  })
-  const cancelActivity = (activityId: string) => message(async () => {
-    await api(`/api/atividades/${activityId}/cancelar`, { method: 'PATCH' })
-    setNotice('Atividade cancelada.'); await loadPrivate(); await loadCatalog()
-  })
-  const showParticipants = (activityId: string) => message(async () => {
-    setParticipants(null); setParticipantsActivityId(activityId)
-    setParticipants(await api<Participant[]>(`/api/atividades/${activityId}/inscricoes`))
-  })
-  const editActivity = (activity: Activity) => {
-    setEditing(activity.id)
-    setForm({ tipo: activity.tipo, tema: activity.tema, descricao: activity.descricao, nivel: activity.nivel, dataHora: localDateTimeInput(activity.dataHora), local: activity.local, numeroDeVagas: String(activity.numeroDeVagas) })
-    setPage('publicar')
   }
 
-  return <div className="app-shell">
-    <header className="topbar"><a className="brand" href="#inicio" onClick={e => { e.preventDefault(); setPage('catalogo') }}>ConectaCampus</a>
-      <nav aria-label="Navegação principal">{nav.map(item => <button key={item.id} className={page === item.id ? 'nav-link active' : 'nav-link'} onClick={() => { setPage(item.id); setSelected(null); setParticipants(null); setParticipantsActivityId(null); setError(''); setNotice('') }}>{item.label}</button>)}</nav>
-      <div className="account">{student ? <><span>{student.name}</span><button className="button secondary small" onClick={() => { signOut(); setPage('catalogo'); setNotice('Você saiu da sua conta.') }}>Sair</button></> : <button className="button primary small" onClick={() => { setPage('conta'); setAuthMode('login') }}>Entrar</button>}</div>
-    </header>
-    <main className="main-content">
-      <div className="heading"><div><p className="eyebrow">FATEC SHUNJI NISHIMURA</p><h1>{page === 'catalogo' ? 'Compartilhe conhecimento' : page === 'publicar' ? (editing ? 'Editar atividade' : 'Publique uma atividade') : page === 'minhas' ? 'Minhas atividades' : page === 'inscricoes' ? 'Minhas inscrições' : 'Acesse sua conta'}</h1><p className="subtitle">Encontre encontros de aprendizagem criados por estudantes.</p></div></div>
-      {error && <div className="feedback error" role="alert">{error}</div>}{notice && <div className="feedback success" role="status">{notice}</div>}
-      {loading && <p className="loading" role="status">Carregando…</p>}
+  const loadEnrollments = async (showFeedback = true) => {
+    if (!token) return
+    setEnrollmentsLoading(true)
+    if (showFeedback) clearFeedback()
+    try {
+      setEnrollments(await api<Enrollment[]>('/api/inscricoes/minhas'))
+    } catch (requestError) {
+      if (showFeedback) setError(requestError instanceof Error ? requestError.message : 'Não foi possível carregar suas inscrições.')
+    } finally {
+      setEnrollmentsLoading(false)
+    }
+  }
 
-      {page === 'conta' && <section className="panel narrow"><div className="tabs"><button className={authMode === 'login' ? 'tab active' : 'tab'} onClick={() => setAuthMode('login')}>Entrar</button><button className={authMode === 'register' ? 'tab active' : 'tab'} onClick={() => setAuthMode('register')}>Criar cadastro</button></div>
-        <form onSubmit={event => void submitAuth(event)} className="form-grid">
-          {authMode === 'register' && <><label>Nome<input required maxLength={200} value={authForm.name} onChange={e => setAuthForm({ ...authForm, name: e.target.value })} /></label><label>Curso<input required maxLength={120} value={authForm.course} onChange={e => setAuthForm({ ...authForm, course: e.target.value })} /></label></>}
-          <label>E-mail<input type="email" required autoComplete="email" value={authForm.email} onChange={e => setAuthForm({ ...authForm, email: e.target.value })} /></label>
-          <label>Senha<input type="password" required autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} value={authForm.password} onChange={e => setAuthForm({ ...authForm, password: e.target.value })} /></label>
-          <button className="button primary" disabled={loading}>{authMode === 'login' ? 'Entrar' : 'Criar conta'}</button>
-        </form>
-      </section>}
+  const loadSeatMap = async (activityId: string, keepFeedback = false) => {
+    setSeatLoading(true)
+    if (!keepFeedback) clearFeedback()
+    try {
+      setSeatMap(await apiRequest<SeatMap>(`/api/atividades/${encodeURIComponent(activityId)}/assentos`))
+    } catch (requestError) {
+      setSeatMap(null)
+      setSelectedSeat(null)
+      setError(requestError instanceof Error ? requestError.message : 'Não foi possível carregar o mapa de assentos.')
+    } finally {
+      setSeatLoading(false)
+    }
+  }
+
+  useEffect(() => { void loadCatalog('') }, [])
+  useEffect(() => {
+    if (token) void loadEnrollments(false)
+    else setEnrollments([])
+  }, [token])
+
+  const openActivity = async (id: string) => {
+    setDetailLoading(true)
+    clearFeedback()
+    try {
+      const activity = await apiRequest<Activity>(`/api/atividades/${encodeURIComponent(id)}`)
+      setSelected(activity)
+      setSeatMap(null)
+      setSelectedSeat(null)
+      setPage('detalhe')
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Não foi possível carregar os detalhes da atividade.')
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
+  const openSeatMap = async () => {
+    if (!selected) return
+    setSelectedSeat(null)
+    setPage('assentos')
+    await loadSeatMap(selected.id)
+  }
+
+  const submitAuth = async (event: FormEvent) => {
+    event.preventDefault()
+    clearFeedback()
+    try {
+      if (authMode === 'register') {
+        await apiRequest('/api/auth/register', {
+          method: 'POST',
+          body: JSON.stringify({ name: authForm.name, email: authForm.email, course: authForm.course, password: authForm.password }),
+        })
+        setAuthMode('login')
+        setAuthForm(current => ({ ...current, password: '' }))
+        setNotice('Cadastro realizado. Entre com seu e-mail e senha.')
+        return
+      }
+      const result = await apiRequest<LoginResponse>('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: authForm.email, password: authForm.password }),
+      })
+      signIn(result.accessToken, result.student)
+      setPage('catalogo')
+      setNotice(`Bem-vindo(a), ${result.student.name}.`)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Não foi possível acessar sua conta.')
+    }
+  }
+
+  const confirmEnrollment = async () => {
+    if (!selected || !selectedSeat) return
+    if (!token) {
+      setPage('conta')
+      setError('Entre na sua conta para confirmar a inscrição.')
+      return
+    }
+    setConfirmingSeat(true)
+    clearFeedback()
+    try {
+      await api(`/api/atividades/${encodeURIComponent(selected.id)}/inscricoes`, {
+        method: 'POST',
+        body: JSON.stringify({ assentoId: selectedSeat.id }),
+      })
+      const seatCode = selectedSeat.codigo
+      setSelectedSeat(null)
+      await Promise.all([loadSeatMap(selected.id, true), loadEnrollments(false)])
+      setNotice(`Inscrição confirmada no assento ${seatCode}.`)
+    } catch (requestError) {
+      if (requestError instanceof ApiError && requestError.status === 409) {
+        setSelectedSeat(null)
+        await loadSeatMap(selected.id, true)
+        setError('Esse lugar não está mais disponível. O mapa foi atualizado; escolha outro assento.')
+      } else {
+        setError(requestError instanceof Error ? requestError.message : 'Não foi possível confirmar sua inscrição.')
+      }
+    } finally {
+      setConfirmingSeat(false)
+    }
+  }
+
+  const goTo = (nextPage: Page) => {
+    clearFeedback()
+    setPage(nextPage)
+  }
+
+  const columns = seatMap?.sala.tipo.toUpperCase() === 'NOTEBOOK' ? 5 : 6
+
+  return <div className="app-shell student-area">
+    <header className="topbar">
+      <button className="brand brand-button" type="button" onClick={() => goTo('catalogo')}>ConectaCampus</button>
+      <nav aria-label="Navegação da área do aluno">
+        <button className={page === 'catalogo' || page === 'detalhe' || page === 'assentos' ? 'nav-link active' : 'nav-link'} type="button" onClick={() => goTo('catalogo')}>Atividades</button>
+        {student && <button className={page === 'inscricoes' ? 'nav-link active' : 'nav-link'} type="button" onClick={() => { goTo('inscricoes'); void loadEnrollments() }}>Minhas inscrições</button>}
+      </nav>
+      <div className="account">
+        {student
+          ? <><span>{student.name}</span><button className="button secondary small" type="button" onClick={() => { signOut(); goTo('catalogo'); setNotice('Você saiu da sua conta.') }}>Sair</button></>
+          : <button className="button primary small" type="button" onClick={() => { setAuthMode('login'); goTo('conta') }}>Entrar</button>}
+      </div>
+    </header>
+
+    <main className="main-content">
+      <div className="heading">
+        <div>
+          <p className="eyebrow">ÁREA DO ALUNO</p>
+          <h1>{page === 'catalogo' ? 'Aulas e palestras' : page === 'detalhe' ? 'Detalhes da atividade' : page === 'assentos' ? 'Escolha seu assento' : page === 'inscricoes' ? 'Minhas inscrições' : 'Acesse sua conta'}</h1>
+          <p className="subtitle">{page === 'assentos' ? 'A seleção só é confirmada depois da inscrição.' : 'Encontre atividades acadêmicas e participe.'}</p>
+        </div>
+      </div>
+
+      {error && <div className="feedback error" role="alert">{error}</div>}
+      {notice && <div className="feedback success" role="status">{notice}</div>}
 
       {page === 'catalogo' && <>
-        <section className="panel filters" aria-label="Filtros de atividades">
-          <label>Tema<input value={filters.tema} onChange={e => setFilters({ ...filters, tema: e.target.value })} placeholder="Ex.: programação" /></label>
-          <label>Tipo<select value={filters.tipo} onChange={e => setFilters({ ...filters, tipo: e.target.value })}><option value="">Todos</option><option value="aula">Aula</option><option value="palestra">Palestra</option><option value="grupo de estudo">Grupo de estudo</option></select></label>
-          <label>Nível<input value={filters.nivel} onChange={e => setFilters({ ...filters, nivel: e.target.value })} /></label>
-          <label>Data<input type="date" value={filters.data} onChange={e => setFilters({ ...filters, data: e.target.value })} /></label>
-          <button className="button primary" onClick={message(loadCatalog)}>Buscar</button>
-        </section>
-        {selected && <section className="panel detail"><button className="text-button" onClick={() => setSelected(null)}>← Voltar ao catálogo</button><h2>{selected.tema}</h2><p>{selected.descricao}</p><div className="detail-grid"><span><b>Organizador</b>{selected.nomeOrganizador}</span><span><b>Tipo e nível</b>{selected.tipo} · {selected.nivel}</span><span><b>Data e horário</b>{dateLabel(selected.dataHora)}</span><span><b>Local</b>{selected.local}</span><span><b>Vagas</b>{selected.numeroDeVagas}</span><span><b>Status</b>{selected.status}</span></div>
-          {student && selected.status === 'publicada' && (enrolledActivityIds.has(selected.id) ? <button className="button secondary" onClick={cancelEnrollment(selected.id)}>Cancelar minha inscrição</button> : <button className="button primary" onClick={enroll(selected)}>Inscrever-me</button>)}{!student && <p>Entre para se inscrever nesta atividade.</p>}</section>}
-        <div className="section-row"><h2>Atividades disponíveis</h2><span>{activities.length} encontrada(s)</span></div>
-        {activities.length === 0 ? <div className="empty">Nenhuma atividade encontrada. Ajuste os filtros ou tente novamente.</div> : <div className="cards">{activities.map(activity => <article className="card" key={activity.id}><div className="card-top"><span className="tag">{activity.tipo}</span><span className={activity.status === 'publicada' ? 'status' : 'status muted'}>{activity.status}</span></div><h3>{activity.tema}</h3><p>{activity.descricao}</p><div className="meta">{dateLabel(activity.dataHora)} · {activity.local}</div><div className="card-bottom"><span>{activity.numeroDeVagas} vagas · {activity.nivel}</span><button className="text-button" onClick={selectActivity(activity.id)}>Ver detalhes</button></div></article>)}</div>}
+        <form className="panel filters student-search" onSubmit={event => { event.preventDefault(); void loadCatalog() }}>
+          <label>Pesquisar por tema
+            <input value={theme} onChange={event => setTheme(event.target.value)} placeholder="Ex.: programação, carreira" />
+          </label>
+          <button className="button primary" disabled={catalogLoading}>Buscar</button>
+        </form>
+        <div className="section-row"><h2>Atividades disponíveis</h2><span>{catalogLoading ? 'Carregando…' : `${activities.length} encontrada(s)`}</span></div>
+        {catalogLoading ? <div className="empty" role="status">Carregando atividades…</div> : activities.length === 0 ? <div className="empty">Nenhuma atividade encontrada. Tente outro tema.</div> : <div className="cards">
+          {activities.map(activity => <article className="card activity-card" key={activity.id}>
+            <div className="card-top"><span className="tag">{titleCase(activity.modalidade)}</span><span className="status">Disponível</span></div>
+            <h2>{activity.tema}</h2>
+            <p>{activity.descricao}</p>
+            <div className="activity-meta">
+              <span><b>Data e horário</b>{scheduleLabel(activity.inicio, activity.fim)}</span>
+              <span><b>Sala</b>{activity.sala.nome}</span>
+              <span><b>Tipo de sala</b>{titleCase(activity.sala.tipo)}</span>
+              <span><b>Capacidade</b>{activity.sala.capacidade} lugares</span>
+            </div>
+            <div className="card-bottom"><button className="text-button" type="button" disabled={detailLoading} onClick={() => void openActivity(activity.id)}>{detailLoading ? 'Carregando…' : 'Ver detalhes'}</button></div>
+          </article>)}
+        </div>}
       </>}
 
-      {page === 'publicar' && <section className="panel"><form onSubmit={event => void saveActivity(event)} className="form-grid two-col">
-        <label>Tipo<select required value={form.tipo} onChange={e => setForm({ ...form, tipo: e.target.value })}><option value="aula">Aula</option><option value="palestra">Palestra</option><option value="grupo de estudo">Grupo de estudo</option></select></label>
-        <label>Tema<input required maxLength={200} value={form.tema} onChange={e => setForm({ ...form, tema: e.target.value })} /></label>
-        <label className="span-two">Descrição<textarea required maxLength={5000} rows={4} value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} /></label>
-        <label>Nível<input required maxLength={80} value={form.nivel} onChange={e => setForm({ ...form, nivel: e.target.value })} /></label>
-        <label>Data e horário<input type="datetime-local" required value={form.dataHora} onChange={e => setForm({ ...form, dataHora: e.target.value })} /></label>
-        <label>Local<input required maxLength={300} value={form.local} onChange={e => setForm({ ...form, local: e.target.value })} /></label>
-        <label>Número de vagas<input type="number" required min="1" value={form.numeroDeVagas} onChange={e => setForm({ ...form, numeroDeVagas: e.target.value })} /></label>
-        <div className="form-actions span-two"><button className="button primary" disabled={loading}>{editing ? 'Salvar alterações' : 'Publicar atividade'}</button>{editing && <button type="button" className="button secondary" onClick={() => { setEditing(null); setForm(emptyForm) }}>Cancelar edição</button>}</div>
-      </form></section>}
+      {page === 'detalhe' && <>
+        <button className="text-button back-button" type="button" onClick={() => goTo('catalogo')}>← Voltar às atividades</button>
+        {detailLoading ? <div className="empty" role="status">Carregando atividade…</div> : selected && <section className="panel detail student-detail">
+          <div className="detail-title"><span className="tag">{titleCase(selected.modalidade)}</span><h2>{selected.tema}</h2></div>
+          <p>{selected.descricao}</p>
+          <div className="detail-grid">
+            <span><b>Data e horário</b>{scheduleLabel(selected.inicio, selected.fim)}</span>
+            <span><b>Sala</b>{selected.sala.nome}</span>
+            <span><b>Tipo de sala</b>{titleCase(selected.sala.tipo)}</span>
+            <span><b>Capacidade</b>{selected.sala.capacidade} lugares</span>
+          </div>
+          {selected.status === 'publicada' && <button className="button primary" type="button" onClick={() => void openSeatMap()}>Escolher assento</button>}
+        </section>}
+      </>}
 
-      {page === 'minhas' && <>{!token ? <div className="empty">Entre para ver suas atividades.</div> : mine.length === 0 ? <div className="empty">Você ainda não publicou atividades.</div> : <div className="cards">{mine.map(activity => <article className="card" key={activity.id}><div className="card-top"><span className="tag">{activity.tipo}</span><span className={activity.status === 'publicada' ? 'status' : 'status muted'}>{activity.status}</span></div><h3>{activity.tema}</h3><p>{dateLabel(activity.dataHora)} · {activity.local}</p><div className="card-bottom"><span>{activity.numeroDeVagas} vagas</span><div className="actions"><button className="text-button" onClick={showParticipants(activity.id)}>Inscritos</button><button className="text-button" onClick={() => editActivity(activity)}>Editar</button>{activity.status === 'publicada' && <button className="text-button danger-text" onClick={cancelActivity(activity.id)}>Cancelar</button>}</div></div>{participants && participantsActivityId === activity.id && <div className="participants"><b>Participantes</b>{participants.filter(person => person.status === 'ativa').length === 0 ? <p>Nenhuma inscrição ativa.</p> : participants.filter(person => person.status === 'ativa').map(person => <p key={person.alunoId}>{person.nomeAluno}</p>)}</div>}</article>)}</div>}</>}
+      {page === 'assentos' && <>
+        <button className="text-button back-button" type="button" onClick={() => { setSelectedSeat(null); goTo('detalhe') }}>← Voltar aos detalhes</button>
+        {seatLoading ? <div className="empty" role="status">Carregando mapa de assentos…</div> : seatMap && <section className="panel seat-panel">
+          <div className="seat-panel-heading">
+            <div><span className="tag">{titleCase(seatMap.sala.tipo)}</span><h2>{seatMap.tema}</h2><p>{scheduleLabel(seatMap.inicio, seatMap.fim)} · {seatMap.sala.nome}</p></div>
+            <div className="availability"><b>{seatMap.lugaresDisponiveis}</b><span>vagas disponíveis</span></div>
+          </div>
+          <div className="seat-legend" aria-label="Legenda do mapa de assentos"><span><i className="seat-sample available" />Disponível</span><span><i className="seat-sample occupied" />Ocupado</span><span><i className="seat-sample chosen" />Selecionado</span></div>
+          <div className="seat-map" style={{ '--seat-columns': columns } as CSSProperties} aria-label={`Mapa de assentos da sala ${seatMap.sala.nome}`}>
+            {seatMap.assentos.map(seat => {
+              const occupied = seat.status === 'OCUPADO'
+              const chosen = selectedSeat?.id === seat.id
+              return <button key={seat.id} className={`seat ${occupied ? 'occupied' : chosen ? 'selected' : 'available'}`} type="button" disabled={occupied || confirmingSeat} aria-pressed={chosen} aria-label={`Assento ${seat.codigo}${occupied ? ', ocupado' : chosen ? ', selecionado' : ', disponível'}`} onClick={() => { setSelectedSeat(seat); clearFeedback() }}>{seat.codigo}</button>
+            })}
+          </div>
+          <div className="seat-selection">
+            <div>{selectedSeat ? <>Assento selecionado: <b>{selectedSeat.codigo}</b></> : 'Selecione um assento disponível no mapa.'}</div>
+            <button className="button primary" type="button" disabled={!selectedSeat || confirmingSeat} onClick={() => void confirmEnrollment()}>{confirmingSeat ? 'Confirmando…' : 'Confirmar inscrição'}</button>
+          </div>
+        </section>}
+      </>}
 
-      {page === 'inscricoes' && <>{!token ? <div className="empty">Entre para ver suas inscrições.</div> : enrollments.length === 0 ? <div className="empty">Você ainda não se inscreveu em atividades.</div> : <div className="cards">{enrollments.map(item => <article className="card" key={item.id}><div className="card-top"><span className="tag">{item.tipo}</span><span className={item.status === 'ativa' ? 'status' : 'status muted'}>{item.status}</span></div><h3>{item.tema}</h3><p>{dateLabel(item.dataHora)} · {item.local}</p><div className="card-bottom"><span>Atividade {item.statusAtividade}</span>{item.status === 'ativa' && item.statusAtividade === 'publicada' && <button className="text-button danger-text" onClick={cancelEnrollment(item.atividadeId)}>Cancelar inscrição</button>}</div></article>)}</div>}</>}
+      {page === 'inscricoes' && <>
+        {!student ? <div className="empty">Entre para consultar suas inscrições.</div> : enrollmentsLoading ? <div className="empty" role="status">Carregando inscrições…</div> : enrollments.length === 0 ? <div className="empty">Você ainda não possui inscrições.</div> : <div className="cards">
+          {enrollments.map(item => <article className="card activity-card" key={item.id}>
+            <div className="card-top"><span className="tag">{titleCase(item.tipo)}</span><span className={item.status === 'ativa' ? 'status' : 'status muted'}>{titleCase(item.status)}</span></div>
+            <h2>{item.tema}</h2>
+            <div className="activity-meta">
+              <span><b>Horário</b>{scheduleLabel(item.inicio ?? item.dataHora, item.fim)}</span>
+              <span><b>Sala</b>{item.sala?.nome ?? item.local}</span>
+              <span><b>Assento</b>{item.assento?.codigo ?? 'Não informado'}</span>
+            </div>
+            <div className="card-bottom"><button className="text-button" type="button" onClick={() => void openActivity(item.atividadeId)}>Ver atividade</button></div>
+          </article>)}
+        </div>}
+      </>}
+
+      {page === 'conta' && <section className="panel narrow">
+        <div className="tabs"><button className={authMode === 'login' ? 'tab active' : 'tab'} type="button" onClick={() => setAuthMode('login')}>Entrar</button><button className={authMode === 'register' ? 'tab active' : 'tab'} type="button" onClick={() => setAuthMode('register')}>Criar cadastro</button></div>
+        <form onSubmit={event => void submitAuth(event)} className="form-grid">
+          {authMode === 'register' && <><label>Nome<input required maxLength={200} value={authForm.name} onChange={event => setAuthForm({ ...authForm, name: event.target.value })} /></label><label>Curso<input required maxLength={120} value={authForm.course} onChange={event => setAuthForm({ ...authForm, course: event.target.value })} /></label></>}
+          <label>E-mail<input type="email" required autoComplete="email" value={authForm.email} onChange={event => setAuthForm({ ...authForm, email: event.target.value })} /></label>
+          <label>Senha<input type="password" required autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} value={authForm.password} onChange={event => setAuthForm({ ...authForm, password: event.target.value })} /></label>
+          <button className="button primary" type="submit">{authMode === 'login' ? 'Entrar' : 'Criar conta'}</button>
+        </form>
+      </section>}
     </main>
     <footer>ConectaCampus · Projeto Integrador · Fatec Shunji Nishimura de Pompeia</footer>
   </div>

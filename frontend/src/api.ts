@@ -12,25 +12,55 @@ export interface LoginResponse {
   student: Student
 }
 
-export interface Activity {
+export interface Room {
   id: string
-  tipo: string
-  tema: string
-  descricao: string
-  nivel: string
-  dataHora: string
-  local: string
-  numeroDeVagas: number
-  status: 'publicada' | 'cancelada'
+  nome: string
+  tipo: 'DESKTOP' | 'NOTEBOOK' | string
+  capacidade: number
 }
 
-export interface ActivityDetails extends Activity {
-  nomeOrganizador: string
+export interface Activity {
+  id: string
+  tema: string
+  descricao: string
+  modalidade: string
+  sala: Room
+  data: string
+  inicio: string
+  fim: string
+  status: 'publicada' | 'cancelada' | string
+}
+
+export interface Seat {
+  id: string
+  codigo: string
+  fileira: string
+  coluna: number
+  status: 'DISPONIVEL' | 'OCUPADO' | string
+}
+
+export interface SeatMap {
+  atividadeId: string
+  tema: string
+  data: string
+  inicio: string
+  fim: string | null
+  sala: Room
+  capacidadeTotal: number
+  lugaresDisponiveis: number
+  assentos: Seat[]
+}
+
+export interface ReservedSeat {
+  id: string
+  codigo: string
+  fileira: string
+  coluna: number
 }
 
 export interface Enrollment {
   id: string
-  status: 'ativa' | 'cancelada'
+  status: 'ativa' | 'cancelada' | string
   criadaEmUtc: string
   atualizadaEmUtc: string
   atividadeId: string
@@ -38,25 +68,11 @@ export interface Enrollment {
   tema: string
   dataHora: string
   local: string
-  statusAtividade: 'publicada' | 'cancelada'
-}
-
-export interface Participant {
-  alunoId: string
-  nomeAluno: string
-  status: 'ativa' | 'cancelada'
-  criadaEmUtc: string
-  atualizadaEmUtc: string
-}
-
-export interface ActivityInput {
-  tipo: string
-  tema: string
-  descricao: string
-  nivel: string
-  dataHora: string
-  local: string
-  numeroDeVagas: number
+  statusAtividade: 'publicada' | 'cancelada' | string
+  sala: Room | null
+  assento: ReservedSeat | null
+  inicio: string
+  fim: string | null
 }
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
