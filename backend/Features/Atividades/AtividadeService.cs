@@ -78,7 +78,7 @@ public sealed partial class AtividadeService(ApplicationDbContext db, AtividadeR
         if (responsavel is null)
         {
             await transaction.RollbackAsync(cancellationToken);
-            return CriarAtividadeResultado.ResponsavelInvalido;
+            return CriarAtividadeResultado.ResponsavelAusente;
         }
 
         var salas = await repository.ObterSalasDisponiveisComBloqueioAsync(tipoSala, cancellationToken);
@@ -186,5 +186,5 @@ public sealed record CriarAtividadeResultado(AtividadeResponse? Atividade, bool 
     }
 
     public static CriarAtividadeResultado SemSalaDisponivel { get; } = new(null, true, false);
-    public static CriarAtividadeResultado ResponsavelInvalido { get; } = new(null, false, true);
+    public static CriarAtividadeResultado ResponsavelAusente { get; } = new(null, false, true);
 }

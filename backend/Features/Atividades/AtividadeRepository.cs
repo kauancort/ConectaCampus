@@ -64,7 +64,11 @@ public sealed class AtividadeRepository(ApplicationDbContext db)
     public Task<List<Atividade>> ListarDoResponsavelAsync(string responsavelId, CancellationToken cancellationToken) =>
         db.Atividades.AsNoTracking()
             .Include(atividade => atividade.Sala)
-            .Where(atividade => atividade.ResponsavelId == responsavelId)
+            .Where(atividade =>
+                atividade.ResponsavelId == responsavelId &&
+                atividade.SalaId != null &&
+                atividade.Inicio != null &&
+                atividade.Fim != null)
             .OrderBy(atividade => atividade.Inicio)
             .ToListAsync(cancellationToken);
 }

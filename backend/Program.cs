@@ -26,6 +26,8 @@ if (string.IsNullOrWhiteSpace(connectionString))
 }
 
 builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseMySQL(connectionString));
+builder.Services.AddScoped<AtividadeRepository>();
+builder.Services.AddScoped<AtividadeService>();
 var jwtIssuer = RequiredSetting(builder.Configuration, "JWT_ISSUER");
 var jwtAudience = RequiredSetting(builder.Configuration, "JWT_AUDIENCE");
 var jwtSigningKey = RequiredSetting(builder.Configuration, "JWT_SIGNING_KEY");
