@@ -27,6 +27,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(sala => sala.Tipo).HasMaxLength(20).IsRequired();
             entity.Property(sala => sala.Capacidade).IsRequired();
             entity.Property(sala => sala.Status).HasMaxLength(20).IsRequired();
+            entity.HasData(SalaSeed.Salas);
         });
         builder.Entity<Assento>(entity =>
         {
@@ -39,6 +40,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 .WithMany(sala => sala.Assentos)
                 .HasForeignKey(assento => assento.SalaId)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasData(SalaSeed.Assentos);
         });
         builder.Entity<Atividade>(entity =>
         {

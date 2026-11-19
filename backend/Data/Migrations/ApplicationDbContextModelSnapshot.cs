@@ -94,6 +94,393 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("AprendizagemColaborativa.Api.Models.Assento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)");
+
+                    b.Property<int>("Coluna")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Fileira")
+                        .IsRequired()
+                        .HasMaxLength(1)
+                        .HasColumnType("varchar(1)");
+
+                    b.Property<Guid>("SalaId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SalaId", "Codigo")
+                        .IsUnique();
+
+                    b.HasIndex("SalaId", "Fileira", "Coluna")
+                        .IsUnique();
+
+                    b.ToTable("Assentos");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("f0339936-3515-2a94-755e-7a865167078e"),
+                            Codigo = "A1",
+                            Coluna = 1,
+                            Fileira = "A",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("e15efd3a-a5b5-e890-ae69-fb024abcc090"),
+                            Codigo = "A2",
+                            Coluna = 2,
+                            Fileira = "A",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("d48da9c7-a5dd-e204-6237-9ae67a8a93e7"),
+                            Codigo = "A3",
+                            Coluna = 3,
+                            Fileira = "A",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("d90ec8ef-657f-1cf3-011c-592f25921b83"),
+                            Codigo = "A4",
+                            Coluna = 4,
+                            Fileira = "A",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("9230b494-1c2d-70da-a624-789290b26530"),
+                            Codigo = "A5",
+                            Coluna = 5,
+                            Fileira = "A",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("582fffd4-a50b-52f8-3f4d-1d59e9fda3ef"),
+                            Codigo = "A6",
+                            Coluna = 6,
+                            Fileira = "A",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("d7ad5a1f-69ac-2aef-0e38-6aa8468bf597"),
+                            Codigo = "B1",
+                            Coluna = 1,
+                            Fileira = "B",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("6c8ebc23-ac82-bc3e-ce6b-7fc26dfcb6a6"),
+                            Codigo = "B2",
+                            Coluna = 2,
+                            Fileira = "B",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("7b6b0dbe-4bf7-9ab1-90fe-88225c8410f4"),
+                            Codigo = "B3",
+                            Coluna = 3,
+                            Fileira = "B",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("098c2662-93b5-9ce8-4b04-d9eff21b3659"),
+                            Codigo = "B4",
+                            Coluna = 4,
+                            Fileira = "B",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("5cfe75b0-64a7-9e84-6146-b9260afd2600"),
+                            Codigo = "B5",
+                            Coluna = 5,
+                            Fileira = "B",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("d474a9a6-6fbd-91aa-65bf-fc2464478a42"),
+                            Codigo = "B6",
+                            Coluna = 6,
+                            Fileira = "B",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("17efbb91-98d1-0040-1d7c-e6d75501313a"),
+                            Codigo = "C1",
+                            Coluna = 1,
+                            Fileira = "C",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("10599837-58db-20bb-c6c2-5aa10dc023ed"),
+                            Codigo = "C2",
+                            Coluna = 2,
+                            Fileira = "C",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("5d44f1c9-a571-650c-ab1b-3dbfdc5c8693"),
+                            Codigo = "C3",
+                            Coluna = 3,
+                            Fileira = "C",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("6793be2f-032f-9e1c-6382-3c8fab292e3c"),
+                            Codigo = "C4",
+                            Coluna = 4,
+                            Fileira = "C",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("285add86-c7ec-d97b-3d01-6af7e1fd423f"),
+                            Codigo = "C5",
+                            Coluna = 5,
+                            Fileira = "C",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("8921d0b7-4093-d1cf-5e05-ec8440b974e8"),
+                            Codigo = "C6",
+                            Coluna = 6,
+                            Fileira = "C",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("b88da7ae-53a7-533d-7851-60d010b697f7"),
+                            Codigo = "D1",
+                            Coluna = 1,
+                            Fileira = "D",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("c6275499-883e-52b8-2ff0-3e81f3703570"),
+                            Codigo = "D2",
+                            Coluna = 2,
+                            Fileira = "D",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("a32192fe-04e7-5297-0fd4-ed638a413005"),
+                            Codigo = "D3",
+                            Coluna = 3,
+                            Fileira = "D",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("dc9a1c9b-2e00-4f96-bf5b-94d9546eb76e"),
+                            Codigo = "D4",
+                            Coluna = 4,
+                            Fileira = "D",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("5c49826f-5b48-00a0-0aab-3c7cc3de0f33"),
+                            Codigo = "D5",
+                            Coluna = 5,
+                            Fileira = "D",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("a99237fe-df88-cf68-e4d7-c2c90b69fb75"),
+                            Codigo = "D6",
+                            Coluna = 6,
+                            Fileira = "D",
+                            SalaId = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10")
+                        },
+                        new
+                        {
+                            Id = new Guid("19b48232-cbfc-371d-0821-bc7ed605fadb"),
+                            Codigo = "A1",
+                            Coluna = 1,
+                            Fileira = "A",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        },
+                        new
+                        {
+                            Id = new Guid("4fc3ea23-2313-54bf-2e4d-1add2da3bf8e"),
+                            Codigo = "A2",
+                            Coluna = 2,
+                            Fileira = "A",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        },
+                        new
+                        {
+                            Id = new Guid("4315347a-b6e2-2398-c4ed-0657ec8dfee2"),
+                            Codigo = "A3",
+                            Coluna = 3,
+                            Fileira = "A",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        },
+                        new
+                        {
+                            Id = new Guid("554ed00a-df67-3ea8-4ca6-af7c31549f82"),
+                            Codigo = "A4",
+                            Coluna = 4,
+                            Fileira = "A",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        },
+                        new
+                        {
+                            Id = new Guid("0a70d629-5951-1411-cff8-c0274e194984"),
+                            Codigo = "A5",
+                            Coluna = 5,
+                            Fileira = "A",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        },
+                        new
+                        {
+                            Id = new Guid("eefc9193-e93c-1bfe-e620-45bc3ef83e86"),
+                            Codigo = "B1",
+                            Coluna = 1,
+                            Fileira = "B",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        },
+                        new
+                        {
+                            Id = new Guid("21df7fb0-6a7c-1d63-5607-2f9621be0b66"),
+                            Codigo = "B2",
+                            Coluna = 2,
+                            Fileira = "B",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        },
+                        new
+                        {
+                            Id = new Guid("4caae21c-a204-19e0-586e-e4f81c195cd4"),
+                            Codigo = "B3",
+                            Coluna = 3,
+                            Fileira = "B",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        },
+                        new
+                        {
+                            Id = new Guid("4e4ca461-98ff-5505-d9f1-8886c1d6ef0e"),
+                            Codigo = "B4",
+                            Coluna = 4,
+                            Fileira = "B",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        },
+                        new
+                        {
+                            Id = new Guid("76eb5964-0c1a-37bc-ae09-2f9f70a06044"),
+                            Codigo = "B5",
+                            Coluna = 5,
+                            Fileira = "B",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        },
+                        new
+                        {
+                            Id = new Guid("53fc9743-3577-3b65-4229-21b2f939d41a"),
+                            Codigo = "C1",
+                            Coluna = 1,
+                            Fileira = "C",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        },
+                        new
+                        {
+                            Id = new Guid("2f58413a-c757-7e96-1022-f5dd4f79fb70"),
+                            Codigo = "C2",
+                            Coluna = 2,
+                            Fileira = "C",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        },
+                        new
+                        {
+                            Id = new Guid("a62ea0b8-93d0-c426-1e99-238fe61af868"),
+                            Codigo = "C3",
+                            Coluna = 3,
+                            Fileira = "C",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        },
+                        new
+                        {
+                            Id = new Guid("5522bbbe-a11e-1906-1bf7-9b0058214530"),
+                            Codigo = "C4",
+                            Coluna = 4,
+                            Fileira = "C",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        },
+                        new
+                        {
+                            Id = new Guid("73182fcd-2aa6-bc72-0f86-1ad27e49a012"),
+                            Codigo = "C5",
+                            Coluna = 5,
+                            Fileira = "C",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        },
+                        new
+                        {
+                            Id = new Guid("76b9e1ac-b7e1-5bc2-e3f8-39b8a0fb8120"),
+                            Codigo = "D1",
+                            Coluna = 1,
+                            Fileira = "D",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        },
+                        new
+                        {
+                            Id = new Guid("a1cb9179-a574-7271-1abe-404243d02186"),
+                            Codigo = "D2",
+                            Coluna = 2,
+                            Fileira = "D",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        },
+                        new
+                        {
+                            Id = new Guid("9a9c4f4d-5e87-92e2-d193-0ac38f034f76"),
+                            Codigo = "D3",
+                            Coluna = 3,
+                            Fileira = "D",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        },
+                        new
+                        {
+                            Id = new Guid("a8bccad6-a20b-a9d5-937a-b606bfeb35c4"),
+                            Codigo = "D4",
+                            Coluna = 4,
+                            Fileira = "D",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        },
+                        new
+                        {
+                            Id = new Guid("9ed0e7b0-a409-97c6-6153-465fd78132fd"),
+                            Codigo = "D5",
+                            Coluna = 5,
+                            Fileira = "D",
+                            SalaId = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768")
+                        });
+                });
+
             modelBuilder.Entity("AprendizagemColaborativa.Api.Models.Atividade", b =>
                 {
                     b.Property<Guid>("Id")
@@ -108,10 +495,20 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                         .HasMaxLength(5000)
                         .HasColumnType("varchar(5000)");
 
+                    b.Property<DateTime?>("Fim")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("Inicio")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("Local")
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("varchar(300)");
+
+                    b.Property<string>("Modalidade")
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)");
 
                     b.Property<string>("Nivel")
                         .IsRequired()
@@ -124,6 +521,12 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                     b.Property<string>("OrganizadorId")
                         .IsRequired()
                         .HasColumnType("varchar(255)");
+
+                    b.Property<string>("ResponsavelId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<Guid?>("SalaId")
+                        .HasColumnType("char(36)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -146,6 +549,10 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
 
                     b.HasIndex("OrganizadorId");
 
+                    b.HasIndex("ResponsavelId");
+
+                    b.HasIndex("SalaId");
+
                     b.ToTable("Atividades");
                 });
 
@@ -159,6 +566,9 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(255)");
 
+                    b.Property<Guid?>("AssentoId")
+                        .HasColumnType("char(36)");
+
                     b.Property<Guid>("AtividadeId")
                         .HasColumnType("char(36)");
 
@@ -166,6 +576,9 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                         .HasColumnType("datetime(6)");
 
                     b.Property<DateTime>("CriadaEmUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("Data")
                         .HasColumnType("datetime(6)");
 
                     b.Property<string>("Status")
@@ -177,10 +590,62 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
 
                     b.HasIndex("AlunoId");
 
+                    b.HasIndex("AssentoId");
+
                     b.HasIndex("AtividadeId", "AlunoId")
                         .IsUnique();
 
+                    b.HasIndex("AtividadeId", "AssentoId")
+                        .IsUnique();
+
                     b.ToTable("Inscricoes");
+                });
+
+            modelBuilder.Entity("AprendizagemColaborativa.Api.Models.Sala", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("Capacidade")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Salas");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("0e9abb4a-5aa5-4e6d-b94a-774a5fad4f10"),
+                            Capacidade = 24,
+                            Nome = "Laboratório Desktop",
+                            Status = "disponivel",
+                            Tipo = "DESKTOP"
+                        },
+                        new
+                        {
+                            Id = new Guid("70cb6f07-08e2-4664-8d45-334564cdd768"),
+                            Capacidade = 20,
+                            Nome = "Laboratório Notebook",
+                            Status = "disponivel",
+                            Tipo = "NOTEBOOK"
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
@@ -247,6 +712,17 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("AprendizagemColaborativa.Api.Models.Assento", b =>
+                {
+                    b.HasOne("AprendizagemColaborativa.Api.Models.Sala", "Sala")
+                        .WithMany("Assentos")
+                        .HasForeignKey("SalaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Sala");
+                });
+
             modelBuilder.Entity("AprendizagemColaborativa.Api.Models.Atividade", b =>
                 {
                     b.HasOne("AprendizagemColaborativa.Api.Models.Aluno", "Organizador")
@@ -255,7 +731,21 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("AprendizagemColaborativa.Api.Models.Aluno", "Responsavel")
+                        .WithMany()
+                        .HasForeignKey("ResponsavelId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AprendizagemColaborativa.Api.Models.Sala", "Sala")
+                        .WithMany("Atividades")
+                        .HasForeignKey("SalaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Organizador");
+
+                    b.Navigation("Responsavel");
+
+                    b.Navigation("Sala");
                 });
 
             modelBuilder.Entity("AprendizagemColaborativa.Api.Models.Inscricao", b =>
@@ -266,6 +756,11 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("AprendizagemColaborativa.Api.Models.Assento", "Assento")
+                        .WithMany("Inscricoes")
+                        .HasForeignKey("AssentoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("AprendizagemColaborativa.Api.Models.Atividade", "Atividade")
                         .WithMany()
                         .HasForeignKey("AtividadeId")
@@ -273,6 +768,8 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Aluno");
+
+                    b.Navigation("Assento");
 
                     b.Navigation("Atividade");
                 });
@@ -302,6 +799,18 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("AprendizagemColaborativa.Api.Models.Assento", b =>
+                {
+                    b.Navigation("Inscricoes");
+                });
+
+            modelBuilder.Entity("AprendizagemColaborativa.Api.Models.Sala", b =>
+                {
+                    b.Navigation("Assentos");
+
+                    b.Navigation("Atividades");
                 });
 #pragma warning restore 612, 618
         }
