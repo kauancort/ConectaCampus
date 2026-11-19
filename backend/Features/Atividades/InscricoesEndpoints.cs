@@ -3,7 +3,6 @@ using System.Security.Claims;
 using AprendizagemColaborativa.Api.Data;
 using AprendizagemColaborativa.Api.Models;
 using Microsoft.EntityFrameworkCore;
-using MySql.Data.MySqlClient;
 
 namespace AprendizagemColaborativa.Api.Features.Atividades;
 
@@ -15,8 +14,10 @@ public static class InscricoesEndpoints
 
         activities.MapPost("/{id}/inscricoes", async (
             string id,
+            CriarInscricaoRequest? request,
             ClaimsPrincipal principal,
-            ApplicationDbContext db) =>
+            InscricaoService service,
+            CancellationToken cancellationToken) =>
         {
             if (!Guid.TryParse(id, out var activityId))
             {
@@ -29,68 +30,27 @@ public static class InscricoesEndpoints
                 return Results.Unauthorized();
             }
 
-            await using var transaction = await db.Database.BeginTransactionAsync();
-            var lockedActivities = await LockActivityAsync(db, activityId);
-            var activity = lockedActivities.SingleOrDefault();
-            if (activity is null)
+            if (request?.AssentoId is not { } assentoId || assentoId == Guid.Empty)
             {
-                return Results.NotFound();
-            }
-
-            if (activity.Status != "publicada")
-            {
-                return Results.Conflict(new { message = "Atividades canceladas não aceitam inscrições." });
-            }
-
-            var existing = await db.Inscricoes.SingleOrDefaultAsync(enrollment =>
-                enrollment.AtividadeId == activityId && enrollment.AlunoId == studentId);
-            if (existing?.Status == "ativa")
-            {
-                return Results.Conflict(new { message = "Você já está inscrito nesta atividade." });
-            }
-
-            var activeCount = await db.Inscricoes.CountAsync(enrollment =>
-                enrollment.AtividadeId == activityId && enrollment.Status == "ativa");
-            if (activeCount >= activity.NumeroDeVagas)
-            {
-                return Results.Conflict(new { message = "Não há vagas disponíveis nesta atividade." });
-            }
-
-            var now = DateTime.UtcNow;
-            var reactivated = existing is not null;
-            if (existing is null)
-            {
-                existing = new Inscricao
+                return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
-                    Id = Guid.NewGuid(),
-                    AtividadeId = activityId,
-                    AlunoId = studentId,
-                    Status = "ativa",
-                    CriadaEmUtc = now,
-                    AtualizadaEmUtc = now
-                };
-                db.Inscricoes.Add(existing);
-            }
-            else
-            {
-                existing.Status = "ativa";
-                existing.AtualizadaEmUtc = now;
+                    ["assentoId"] = ["Informe um identificador de assento válido."]
+                });
             }
 
-            try
+            var result = await service.ReservarAsync(activityId, assentoId, studentId, cancellationToken);
+            return result.Situacao switch
             {
-                await db.SaveChangesAsync();
-                await transaction.CommitAsync();
-            }
-            catch (DbUpdateException exception) when (IsDuplicateKey(exception))
-            {
-                return Results.Conflict(new { message = "Você já está inscrito nesta atividade." });
-            }
-
-            var response = ToResponse(existing);
-            return reactivated
-                ? Results.Ok(response)
-                : Results.Json(response, statusCode: StatusCodes.Status201Created);
+                SituacaoInscricao.Criada => Results.Json(result.Inscricao, statusCode: StatusCodes.Status201Created),
+                SituacaoInscricao.AlunoInexistente => Results.Unauthorized(),
+                SituacaoInscricao.AtividadeInexistente => Results.NotFound(),
+                SituacaoInscricao.AssentoInvalido => Results.BadRequest(new { message = "O assento não pertence à sala da atividade." }),
+                SituacaoInscricao.AtividadeCancelada => Results.Conflict(new { message = "Atividades canceladas não aceitam inscrições." }),
+                SituacaoInscricao.AlunoJaInscrito => Results.Conflict(new { message = "Você já está inscrito nesta atividade." }),
+                SituacaoInscricao.AssentoOcupado => Results.Conflict(new { message = "Este assento já está ocupado nesta atividade." }),
+                SituacaoInscricao.SemVagas => Results.Conflict(new { message = "Não há vagas disponíveis nesta atividade." }),
+                _ => Results.Conflict(new { message = "A inscrição ou o assento já foi reservado nesta atividade." })
+            };
         }).RequireAuthorization();
 
         activities.MapDelete("/{id}/inscricoes/me", async (
@@ -121,6 +81,7 @@ public static class InscricoesEndpoints
             if (enrollment is not null && enrollment.Status == "ativa")
             {
                 enrollment.Status = "cancelada";
+                enrollment.AssentoId = null;
                 enrollment.AtualizadaEmUtc = DateTime.UtcNow;
                 await db.SaveChangesAsync();
             }
@@ -167,33 +128,20 @@ public static class InscricoesEndpoints
             return Results.Ok(enrollments);
         }).RequireAuthorization();
 
-        app.MapGet("/api/inscricoes/me", async (ClaimsPrincipal principal, ApplicationDbContext db) =>
-        {
-            var studentId = principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
-            if (string.IsNullOrWhiteSpace(studentId))
-            {
-                return Results.Unauthorized();
-            }
+        app.MapGet("/api/inscricoes/minhas", ListarMinhasAsync).RequireAuthorization().WithTags("Inscricoes");
+        app.MapGet("/api/inscricoes/me", ListarMinhasAsync).RequireAuthorization().WithTags("Inscricoes");
+    }
 
-            var enrollments = (await db.Inscricoes.AsNoTracking()
-                .Include(item => item.Atividade)
-                .Where(item => item.AlunoId == studentId)
-                .OrderByDescending(item => item.AtualizadaEmUtc)
-                .ToListAsync())
-                .Select(item => new MinhaInscricaoResponse(
-                    item.Id,
-                    item.Status,
-                    ToUtcOffset(item.CriadaEmUtc),
-                    ToUtcOffset(item.AtualizadaEmUtc),
-                    item.AtividadeId,
-                    item.Atividade.Tipo,
-                    item.Atividade.Tema,
-                    ToUtcOffset(item.Atividade.DataHoraUtc),
-                    item.Atividade.Local,
-                    item.Atividade.Status))
-                .ToList();
-            return Results.Ok(enrollments);
-        }).RequireAuthorization().WithTags("Inscricoes");
+    private static async Task<IResult> ListarMinhasAsync(
+        ClaimsPrincipal principal, InscricaoService service, CancellationToken cancellationToken)
+    {
+        var studentId = principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        if (string.IsNullOrWhiteSpace(studentId))
+        {
+            return Results.Unauthorized();
+        }
+
+        return Results.Ok(await service.ListarDoAlunoAsync(studentId, cancellationToken));
     }
 
     private static Task<List<Atividade>> LockActivityAsync(ApplicationDbContext db, Guid activityId) =>
@@ -202,25 +150,7 @@ public static class InscricoesEndpoints
             .AsTracking()
             .ToListAsync();
 
-    private static InscricaoResponse ToResponse(Inscricao enrollment) => new(
-        enrollment.Id,
-        enrollment.AtividadeId,
-        enrollment.Status,
-        ToUtcOffset(enrollment.CriadaEmUtc),
-        ToUtcOffset(enrollment.AtualizadaEmUtc));
-
     private static DateTimeOffset ToUtcOffset(DateTime value) =>
         new(DateTime.SpecifyKind(value, DateTimeKind.Utc));
 
-    private static bool IsDuplicateKey(DbUpdateException exception)
-    {
-        for (Exception? current = exception; current is not null; current = current.InnerException)
-        {
-            if (current is MySqlException { Number: 1062 })
-            {
-                return true;
-            }
-        }
-        return false;
-    }
 }

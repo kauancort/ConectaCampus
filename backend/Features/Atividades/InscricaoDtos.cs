@@ -1,11 +1,14 @@
 namespace AprendizagemColaborativa.Api.Features.Atividades;
 
+public sealed record CriarInscricaoRequest(Guid? AssentoId);
+
 public sealed record InscricaoResponse(
     Guid Id,
     Guid AtividadeId,
     string Status,
     DateTimeOffset CriadaEmUtc,
-    DateTimeOffset AtualizadaEmUtc);
+    DateTimeOffset AtualizadaEmUtc,
+    AssentoReservadoResponse Assento);
 
 public sealed record InscricaoParticipanteResponse(
     string AlunoId,
@@ -24,4 +27,8 @@ public sealed record MinhaInscricaoResponse(
     string Tema,
     DateTimeOffset DataHora,
     string Local,
-    string StatusAtividade);
+    string StatusAtividade,
+    SalaAtividadeResponse? Sala,
+    AssentoReservadoResponse? Assento,
+    DateTimeOffset Inicio,
+    DateTimeOffset? Fim);

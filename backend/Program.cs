@@ -29,6 +29,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseMySQL(
 builder.Services.AddScoped<AtividadeRepository>();
 builder.Services.AddScoped<AtividadeService>();
 builder.Services.AddScoped<AssentosService>();
+builder.Services.AddScoped<InscricaoService>();
 var jwtIssuer = RequiredSetting(builder.Configuration, "JWT_ISSUER");
 var jwtAudience = RequiredSetting(builder.Configuration, "JWT_AUDIENCE");
 var jwtSigningKey = RequiredSetting(builder.Configuration, "JWT_SIGNING_KEY");
