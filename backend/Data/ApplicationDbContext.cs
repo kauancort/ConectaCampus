@@ -7,6 +7,7 @@ namespace AprendizagemColaborativa.Api.Data;
 public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
     : IdentityUserContext<Aluno>(options)
 {
+    public DbSet<Sala> Salas => Set<Sala>();
     public DbSet<Atividade> Atividades => Set<Atividade>();
     public DbSet<Inscricao> Inscricoes => Set<Inscricao>();
 
@@ -18,6 +19,13 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(aluno => aluno.Nome).HasMaxLength(200).IsRequired();
             entity.Property(aluno => aluno.Curso).HasMaxLength(120).IsRequired();
             entity.HasIndex(aluno => aluno.NormalizedEmail).IsUnique().HasDatabaseName("EmailIndex");
+        });
+        builder.Entity<Sala>(entity =>
+        {
+            entity.Property(sala => sala.Nome).HasMaxLength(120).IsRequired();
+            entity.Property(sala => sala.Tipo).HasMaxLength(20).IsRequired();
+            entity.Property(sala => sala.Capacidade).IsRequired();
+            entity.Property(sala => sala.Status).HasMaxLength(20).IsRequired();
         });
         builder.Entity<Atividade>(entity =>
         {
