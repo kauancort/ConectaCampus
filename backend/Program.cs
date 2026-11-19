@@ -28,6 +28,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
 builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseMySQL(connectionString));
 builder.Services.AddScoped<AtividadeRepository>();
 builder.Services.AddScoped<AtividadeService>();
+builder.Services.AddScoped<AssentosService>();
 var jwtIssuer = RequiredSetting(builder.Configuration, "JWT_ISSUER");
 var jwtAudience = RequiredSetting(builder.Configuration, "JWT_AUDIENCE");
 var jwtSigningKey = RequiredSetting(builder.Configuration, "JWT_SIGNING_KEY");
@@ -117,6 +118,7 @@ app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapAuthEndpoints(new JwtSettings(jwtIssuer, jwtAudience, jwtKey, TimeSpan.FromMinutes(jwtExpirationMinutes)));
 app.MapAtividadesEndpoints();
+app.MapAssentosEndpoints();
 app.MapInscricoesEndpoints();
 
 await using (var scope = app.Services.CreateAsyncScope())
