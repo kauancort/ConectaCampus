@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth'
 import App from './App'
 import ActivityRegistrationPage from './professor/ActivityRegistrationPage'
+import MyActivitiesPage from './professor/MyActivitiesPage'
 import './style.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -11,6 +12,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          <Route path="/professor/atividades" element={<MyActivitiesPage />} />
           <Route path="/professor/atividades/nova" element={<ActivityRegistrationPage />} />
           <Route path="*" element={<App />} />
         </Routes>

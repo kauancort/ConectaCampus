@@ -43,7 +43,7 @@ function collectMessages(payload: unknown): string[] {
 function fallbackMessage(status: number) {
   if (status === 0) return 'Não foi possível conectar à API. Verifique sua conexão e tente novamente.'
   if (status === 401) return 'Sua sessão expirou ou você precisa entrar para continuar.'
-  if (status === 403) return 'Você não tem permissão para cadastrar atividades.'
+  if (status === 403) return 'Você não tem permissão para realizar esta ação.'
   if (status === 404) return 'O serviço solicitado não foi encontrado.'
   if (status === 409) return 'Não há sala disponível para a data e o horário informados.'
   if (status >= 500) return 'O servidor encontrou um erro. Tente novamente em instantes.'

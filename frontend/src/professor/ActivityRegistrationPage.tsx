@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth'
+import ProfessorHeader from './ProfessorHeader'
 import { ProfessorApiError, professorApiRequest } from './professor-api'
 import './professor.css'
 
@@ -141,7 +143,8 @@ function isRoomUnavailable(error: unknown) {
 }
 
 export default function ActivityRegistrationPage() {
-  const { token, student } = useAuth()
+  const { token } = useAuth()
+  const navigate = useNavigate()
   const [form, setForm] = useState<FormState>(emptyForm)
   const [errors, setErrors] = useState<FormErrors>({})
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
@@ -218,14 +221,12 @@ export default function ActivityRegistrationPage() {
       const room = roomIdentification(response)
       const schedule = confirmedTime(response, form)
       const roomLabel = room && /^sala\b/i.test(room) ? room : room ? `Sala ${room}` : null
-      setFeedback({
-        kind: 'success',
-        message: roomLabel
-          ? `Atividade cadastrada com sucesso. ${roomLabel}, horário confirmado: ${schedule}.`
-          : `Atividade cadastrada com sucesso. Horário confirmado: ${schedule}.`,
-      })
+      const successMessage = roomLabel
+        ? `Atividade cadastrada com sucesso. ${roomLabel}, horário confirmado: ${schedule}.`
+        : `Atividade cadastrada com sucesso. Horário confirmado: ${schedule}.`
       setForm(emptyForm)
       setErrors({})
+      navigate('/professor/atividades', { state: { createdMessage: successMessage } })
     } catch (error) {
       setFeedback({
         kind: 'error',
@@ -241,11 +242,7 @@ export default function ActivityRegistrationPage() {
   }
 
   return <div className="app-shell professor-registration">
-    <header className="topbar professor-header">
-      <a className="brand" href="/professor/atividades/nova">ConectaCampus</a>
-      <span className="area-label">Área do professor/palestrante</span>
-      {student && <div className="account"><span>{student.name}</span></div>}
-    </header>
+    <ProfessorHeader />
 
     <main className="main-content professor-content">
       <div className="heading">

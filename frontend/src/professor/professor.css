@@ -1,10 +1,5 @@
 .professor-registration .professor-header { justify-content: space-between; }
-.professor-registration .area-label {
-  color: #3f6c60;
-  font-size: .88rem;
-  font-weight: 700;
-  margin-right: auto;
-}
+.professor-registration .professor-header nav { flex: 1; }
 .professor-registration .professor-content { max-width: 920px; }
 .professor-registration .registration-panel { padding: clamp(18px, 4vw, 32px); }
 .professor-registration .form-intro { margin-bottom: 24px; }
@@ -25,13 +20,45 @@
   border-radius: 50%;
   animation: professor-spin .75s linear infinite;
 }
+.professor-registration .spinner.dark { border-color: #08724e40; border-top-color: #08724e; }
+.professor-activities .activities-content { width: min(1200px, calc(100% - 40px)); }
+.professor-activities .activities-heading { gap: 24px; }
+.professor-activities .sort-control { min-width: 225px; }
+.professor-activities .activities-loading { display: flex; justify-content: center; align-items: center; gap: 10px; color: #587069; }
+.professor-activities .activities-empty h2 { color: #173d35; }
+.professor-activities .activities-empty p { margin: 8px 0 20px; }
+.professor-activities .professor-activity-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.professor-activities .professor-activity-card h2 { color: #173d35; font-size: 1.15rem; margin: 16px 0; }
+.professor-activities .activity-date { color: #5a7069; font-size: .85rem; font-weight: 650; }
+.professor-activities .activity-card-info { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+.professor-activities .activity-card-info span,
+.professor-activities .professor-detail-grid span { display: grid; gap: 4px; overflow-wrap: anywhere; color: #425d55; }
+.professor-activities .activity-card-info b,
+.professor-activities .professor-detail-grid b { color: #6b7e78; font-size: .76rem; text-transform: uppercase; letter-spacing: .04em; }
+.professor-activities .professor-activity-card .card-bottom { margin-top: auto; justify-content: flex-end; }
+.professor-activities .details-button { color: #08724e; }
+.professor-activities .details-button:disabled { cursor: wait; opacity: .6; }
+.professor-activities .activity-detail { max-width: 900px; }
+.professor-activities .back-button { margin: -6px 0 18px -10px; }
+.professor-activities .activity-detail-title { display: flex; align-items: center; gap: 12px; }
+.professor-activities .activity-description { color: #526a62; line-height: 1.6; white-space: pre-wrap; margin: 18px 0 0; }
+.professor-activities .professor-detail-grid { margin-bottom: 0; }
 @keyframes professor-spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 560px) {
   .professor-registration .professor-header { align-items: center; }
-  .professor-registration .area-label { order: 2; flex-basis: 100%; }
+  .professor-registration .professor-header nav { order: 3; flex-basis: 100%; }
   .professor-registration .time-fields { grid-template-columns: 1fr; }
   .professor-registration .form-actions, .professor-registration .submit-button { width: 100%; }
+  .professor-activities .activities-content { width: calc(100% - 28px); }
+  .professor-activities .activities-heading { align-items: stretch; flex-direction: column; }
+  .professor-activities .sort-control { width: 100%; }
+  .professor-activities .professor-activity-cards { grid-template-columns: 1fr; }
+  .professor-activities .activity-detail-title { align-items: flex-start; flex-direction: column; }
+}
+
+@media (min-width: 561px) and (max-width: 900px) {
+  .professor-activities .professor-activity-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
