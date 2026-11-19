@@ -71,10 +71,12 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         });
         builder.Entity<Inscricao>(entity =>
         {
+            entity.Property(inscricao => inscricao.Data).HasColumnType("datetime(6)");
             entity.Property(inscricao => inscricao.Status).HasMaxLength(20).IsRequired();
             entity.Property(inscricao => inscricao.CriadaEmUtc).HasColumnType("datetime(6)").IsRequired();
             entity.Property(inscricao => inscricao.AtualizadaEmUtc).HasColumnType("datetime(6)").IsRequired();
             entity.HasIndex(inscricao => new { inscricao.AtividadeId, inscricao.AlunoId }).IsUnique();
+            entity.HasIndex(inscricao => new { inscricao.AtividadeId, inscricao.AssentoId }).IsUnique();
             entity.HasIndex(inscricao => inscricao.AlunoId);
             entity.HasOne(inscricao => inscricao.Atividade)
                 .WithMany()
@@ -83,6 +85,10 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasOne(inscricao => inscricao.Aluno)
                 .WithMany()
                 .HasForeignKey(inscricao => inscricao.AlunoId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(inscricao => inscricao.Assento)
+                .WithMany(assento => assento.Inscricoes)
+                .HasForeignKey(inscricao => inscricao.AssentoId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }
