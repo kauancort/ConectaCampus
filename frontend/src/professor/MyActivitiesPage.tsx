@@ -67,9 +67,9 @@ function normalizeActivity(value: unknown): ActivityView | null {
   if (!activity) return null
   const room = asRecord(activity.sala)
   const roomType = asRecord(activity.tipoSala) ?? asRecord(room?.tipoSala) ?? asRecord(room?.tipo)
-  const startSource = activity.horarioInicio ?? activity.horaInicio ?? activity.dataHoraInicio ?? activity.dataHora
-  const endSource = activity.horarioTermino ?? activity.horaTermino ?? activity.dataHoraTermino
-  const date = dateFrom(activity.data ?? activity.dataAtividade ?? activity.dataHoraInicio ?? activity.dataHora)
+  const startSource = activity.inicio ?? activity.horarioInicio ?? activity.horaInicio ?? activity.dataHoraInicio ?? activity.dataHora
+  const endSource = activity.fim ?? activity.horarioTermino ?? activity.horaTermino ?? activity.dataHoraTermino
+  const date = dateFrom(activity.data ?? activity.dataAtividade ?? activity.inicio ?? activity.dataHoraInicio ?? activity.dataHora)
   const startTime = timeFrom(startSource)
   const id = textValue(activity.id, activity.atividadeId)
   if (!id) return null

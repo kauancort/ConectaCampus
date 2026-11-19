@@ -30,8 +30,8 @@ interface CreatedActivityResponse {
   salaId?: unknown
   salaNome?: unknown
   identificacaoSala?: unknown
-  horarioInicio?: unknown
-  horarioTermino?: unknown
+  inicio?: unknown
+  fim?: unknown
   data?: unknown
 }
 
@@ -131,9 +131,13 @@ function timeLabel(value: unknown, fallback: string) {
 }
 
 function confirmedTime(response: CreatedActivityResponse, form: FormState) {
-  const start = timeLabel(response.horarioInicio, form.horarioInicio)
-  const end = timeLabel(response.horarioTermino, form.horarioTermino)
+  const start = timeLabel(response.inicio, form.horarioInicio)
+  const end = timeLabel(response.fim, form.horarioTermino)
   return `${start}–${end}`
+}
+
+function toIsoDateTime(data: string, horario: string) {
+  return new Date(`${data}T${horario}:00`).toISOString()
 }
 
 function isRoomUnavailable(error: unknown) {
@@ -210,9 +214,8 @@ export default function ActivityRegistrationPage() {
             descricao: form.descricao.trim(),
             modalidade: form.modalidade,
             tipoSala: form.tipoSala,
-            data: form.data,
-            horarioInicio: form.horarioInicio,
-            horarioTermino: form.horarioTermino,
+            inicio: toIsoDateTime(form.data, form.horarioInicio),
+            fim: toIsoDateTime(form.data, form.horarioTermino),
           }),
         },
         token,
