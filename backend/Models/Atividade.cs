@@ -3,6 +3,13 @@ namespace AprendizagemColaborativa.Api.Models;
 public sealed class Atividade
 {
     public Guid Id { get; set; }
+    public string? Modalidade { get; set; }
+    public Guid? SalaId { get; set; }
+    public Sala? Sala { get; set; }
+    public string? ResponsavelId { get; set; }
+    public Aluno? Responsavel { get; set; }
+    public DateTime? Inicio { get; set; }
+    public DateTime? Fim { get; set; }
     public string OrganizadorId { get; set; } = string.Empty;
     public Aluno Organizador { get; set; } = null!;
     public string Tipo { get; set; } = string.Empty;

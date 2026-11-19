@@ -42,6 +42,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         });
         builder.Entity<Atividade>(entity =>
         {
+            entity.Property(atividade => atividade.Modalidade).HasMaxLength(30);
+            entity.Property(atividade => atividade.Inicio).HasColumnType("datetime(6)");
+            entity.Property(atividade => atividade.Fim).HasColumnType("datetime(6)");
             entity.Property(atividade => atividade.Tipo).HasMaxLength(30).IsRequired();
             entity.Property(atividade => atividade.Tema).HasMaxLength(200).IsRequired();
             entity.Property(atividade => atividade.Descricao).HasMaxLength(5000).IsRequired();
@@ -50,10 +53,20 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(atividade => atividade.Local).HasMaxLength(300).IsRequired();
             entity.Property(atividade => atividade.Status).HasMaxLength(20).IsRequired();
             entity.HasIndex(atividade => atividade.OrganizadorId);
+            entity.HasIndex(atividade => atividade.ResponsavelId);
+            entity.HasIndex(atividade => atividade.SalaId);
             entity.HasIndex(atividade => atividade.DataHoraUtc);
             entity.HasOne(atividade => atividade.Organizador)
                 .WithMany()
                 .HasForeignKey(atividade => atividade.OrganizadorId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(atividade => atividade.Responsavel)
+                .WithMany()
+                .HasForeignKey(atividade => atividade.ResponsavelId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(atividade => atividade.Sala)
+                .WithMany(sala => sala.Atividades)
+                .HasForeignKey(atividade => atividade.SalaId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
         builder.Entity<Inscricao>(entity =>
