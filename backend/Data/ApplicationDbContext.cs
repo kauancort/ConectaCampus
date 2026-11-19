@@ -8,6 +8,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     : IdentityUserContext<Aluno>(options)
 {
     public DbSet<Sala> Salas => Set<Sala>();
+    public DbSet<Assento> Assentos => Set<Assento>();
     public DbSet<Atividade> Atividades => Set<Atividade>();
     public DbSet<Inscricao> Inscricoes => Set<Inscricao>();
 
@@ -26,6 +27,18 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(sala => sala.Tipo).HasMaxLength(20).IsRequired();
             entity.Property(sala => sala.Capacidade).IsRequired();
             entity.Property(sala => sala.Status).HasMaxLength(20).IsRequired();
+        });
+        builder.Entity<Assento>(entity =>
+        {
+            entity.Property(assento => assento.Codigo).HasMaxLength(10).IsRequired();
+            entity.Property(assento => assento.Fileira).HasMaxLength(1).IsRequired();
+            entity.Property(assento => assento.Coluna).IsRequired();
+            entity.HasIndex(assento => new { assento.SalaId, assento.Codigo }).IsUnique();
+            entity.HasIndex(assento => new { assento.SalaId, assento.Fileira, assento.Coluna }).IsUnique();
+            entity.HasOne(assento => assento.Sala)
+                .WithMany(sala => sala.Assentos)
+                .HasForeignKey(assento => assento.SalaId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
         builder.Entity<Atividade>(entity =>
         {
