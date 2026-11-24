@@ -146,7 +146,7 @@ public static class InscricoesEndpoints
 
     private static Task<List<Atividade>> LockActivityAsync(ApplicationDbContext db, Guid activityId) =>
         db.Atividades
-            .FromSqlInterpolated($"SELECT * FROM `Atividades` WHERE `Id` = {activityId} FOR UPDATE")
+            .FromSqlInterpolated($"""SELECT * FROM conectacampus."Atividades" WHERE "Id" = {activityId} FOR UPDATE""")
             .AsTracking()
             .ToListAsync();
 

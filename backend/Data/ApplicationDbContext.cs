@@ -7,6 +7,9 @@ namespace AprendizagemColaborativa.Api.Data;
 public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
     : IdentityUserContext<Aluno>(options)
 {
+    // Schema privado: não deve ser incluído nos schemas expostos pela Data API do Supabase.
+    public const string Schema = "conectacampus";
+
     public DbSet<Sala> Salas => Set<Sala>();
     public DbSet<Assento> Assentos => Set<Assento>();
     public DbSet<Atividade> Atividades => Set<Atividade>();
@@ -15,6 +18,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+        builder.HasDefaultSchema(Schema);
         builder.Entity<Aluno>(entity =>
         {
             entity.Property(aluno => aluno.Nome).HasMaxLength(200).IsRequired();
@@ -45,13 +49,13 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         builder.Entity<Atividade>(entity =>
         {
             entity.Property(atividade => atividade.Modalidade).HasMaxLength(30);
-            entity.Property(atividade => atividade.Inicio).HasColumnType("datetime(6)");
-            entity.Property(atividade => atividade.Fim).HasColumnType("datetime(6)");
+            entity.Property(atividade => atividade.Inicio).HasColumnType("timestamp with time zone");
+            entity.Property(atividade => atividade.Fim).HasColumnType("timestamp with time zone");
             entity.Property(atividade => atividade.Tipo).HasMaxLength(30).IsRequired();
             entity.Property(atividade => atividade.Tema).HasMaxLength(200).IsRequired();
             entity.Property(atividade => atividade.Descricao).HasMaxLength(5000).IsRequired();
             entity.Property(atividade => atividade.Nivel).HasMaxLength(80).IsRequired();
-            entity.Property(atividade => atividade.DataHoraUtc).HasColumnType("datetime(6)").IsRequired();
+            entity.Property(atividade => atividade.DataHoraUtc).HasColumnType("timestamp with time zone").IsRequired();
             entity.Property(atividade => atividade.Local).HasMaxLength(300).IsRequired();
             entity.Property(atividade => atividade.Status).HasMaxLength(20).IsRequired();
             entity.HasIndex(atividade => atividade.OrganizadorId);
@@ -73,10 +77,10 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         });
         builder.Entity<Inscricao>(entity =>
         {
-            entity.Property(inscricao => inscricao.Data).HasColumnType("datetime(6)");
+            entity.Property(inscricao => inscricao.Data).HasColumnType("timestamp with time zone");
             entity.Property(inscricao => inscricao.Status).HasMaxLength(20).IsRequired();
-            entity.Property(inscricao => inscricao.CriadaEmUtc).HasColumnType("datetime(6)").IsRequired();
-            entity.Property(inscricao => inscricao.AtualizadaEmUtc).HasColumnType("datetime(6)").IsRequired();
+            entity.Property(inscricao => inscricao.CriadaEmUtc).HasColumnType("timestamp with time zone").IsRequired();
+            entity.Property(inscricao => inscricao.AtualizadaEmUtc).HasColumnType("timestamp with time zone").IsRequired();
             entity.HasIndex(inscricao => new { inscricao.AtividadeId, inscricao.AlunoId }).IsUnique();
             entity.HasIndex(inscricao => new { inscricao.AtividadeId, inscricao.AssentoId }).IsUnique();
             entity.HasIndex(inscricao => inscricao.AlunoId);

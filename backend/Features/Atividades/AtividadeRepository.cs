@@ -23,7 +23,7 @@ public sealed class AtividadeRepository(ApplicationDbContext db)
         string tipoSala,
         CancellationToken cancellationToken) =>
         db.Salas
-            .FromSqlInterpolated($"SELECT * FROM `Salas` WHERE `Tipo` = {tipoSala} AND `Status` = {SalaDisponivel} ORDER BY `Id` FOR UPDATE")
+            .FromSqlInterpolated($"""SELECT * FROM conectacampus."Salas" WHERE "Tipo" = {tipoSala} AND "Status" = {SalaDisponivel} ORDER BY "Id" FOR UPDATE""")
             .ToListAsync(cancellationToken);
 
     public Task<bool> ExisteConflitoDeHorarioAsync(
@@ -54,8 +54,8 @@ public sealed class AtividadeRepository(ApplicationDbContext db)
 
         if (!string.IsNullOrWhiteSpace(tema))
         {
-            var filtro = tema.Trim();
-            query = query.Where(atividade => atividade.Tema.Contains(filtro));
+            var filtro = tema.Trim().Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+            query = query.Where(atividade => EF.Functions.ILike(atividade.Tema, "%" + filtro + "%", "\\"));
         }
 
         return query.OrderBy(atividade => atividade.Inicio).ToListAsync(cancellationToken);

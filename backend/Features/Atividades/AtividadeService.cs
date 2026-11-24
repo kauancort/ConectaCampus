@@ -70,8 +70,10 @@ public sealed partial class AtividadeService(ApplicationDbContext db, AtividadeR
         var modalidade = Normalize(request.Modalidade!);
         var tipoSala = Normalize(request.TipoSala!);
 
+        // O bloqueio das salas serializa as reservas; ReadCommitted enxerga a reserva
+        // confirmada por outra transação enquanto esta aguardava o FOR UPDATE.
         await using var transaction = await db.Database.BeginTransactionAsync(
-            System.Data.IsolationLevel.Serializable,
+            System.Data.IsolationLevel.ReadCommitted,
             cancellationToken);
 
         var responsavel = await repository.ObterResponsavelAsync(responsavelId, cancellationToken);

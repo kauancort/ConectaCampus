@@ -1,7 +1,7 @@
 using AprendizagemColaborativa.Api.Data;
 using AprendizagemColaborativa.Api.Models;
 using Microsoft.EntityFrameworkCore;
-using MySql.Data.MySqlClient;
+using Npgsql;
 
 namespace AprendizagemColaborativa.Api.Features.Atividades;
 
@@ -19,7 +19,7 @@ public sealed class InscricaoService(ApplicationDbContext db)
         // Todas as reservas/cancelamentos da atividade usam o mesmo bloqueio de linha.
         // Os índices únicos (atividade, aluno) e (atividade, assento) são a garantia final do banco.
         var atividade = (await db.Atividades
-            .FromSqlInterpolated($"SELECT * FROM `Atividades` WHERE `Id` = {atividadeId} FOR UPDATE")
+            .FromSqlInterpolated($"""SELECT * FROM conectacampus."Atividades" WHERE "Id" = {atividadeId} FOR UPDATE""")
             .AsTracking().ToListAsync(cancellationToken)).SingleOrDefault();
         if (atividade is null)
         {
@@ -110,7 +110,7 @@ public sealed class InscricaoService(ApplicationDbContext db)
     {
         for (Exception? current = exception; current is not null; current = current.InnerException)
         {
-            if (current is MySqlException { Number: 1062 })
+            if (current is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
             {
                 return true;
             }

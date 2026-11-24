@@ -5,7 +5,7 @@ using AprendizagemColaborativa.Api.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using MySql.Data.MySqlClient;
+using Npgsql;
 
 namespace AprendizagemColaborativa.Api.Features.Auth;
 
@@ -199,5 +199,5 @@ public static class AuthEndpoints
     };
 
     private static bool IsDuplicateKey(DbUpdateException exception) =>
-        exception.InnerException is MySqlException { Number: 1062 };
+        exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 }

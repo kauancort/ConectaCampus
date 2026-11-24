@@ -5,27 +5,15 @@ using AprendizagemColaborativa.Api.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using MySql.Data.MySqlClient;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (string.IsNullOrWhiteSpace(connectionString))
-{
-    var settings = new MySqlConnectionStringBuilder
-    {
-        Server = builder.Configuration["MYSQL_HOST"]?.Trim() ?? "127.0.0.1",
-        Port = uint.TryParse(builder.Configuration["MYSQL_PORT"]?.Trim(), out var port) ? port : 3306,
-        Database = RequiredSetting(builder.Configuration, "MYSQL_DATABASE"),
-        UserID = RequiredSetting(builder.Configuration, "MYSQL_USER"),
-        Password = RequiredSetting(builder.Configuration, "MYSQL_PASSWORD")
-    };
-    connectionString = settings.ConnectionString;
-}
+var connectionString = RequiredSetting(builder.Configuration, "ConnectionStrings:DefaultConnection");
 
-builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseMySQL(connectionString));
+builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(connectionString,
+    postgres => postgres.MigrationsHistoryTable("__EFMigrationsHistory", ApplicationDbContext.Schema)));
 builder.Services.AddScoped<AtividadeRepository>();
 builder.Services.AddScoped<AtividadeService>();
 builder.Services.AddScoped<AssentosService>();
@@ -94,8 +82,10 @@ builder.Services.AddProblemDetails(options =>
         };
     };
 });
+var frontendOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? ["http://localhost:5173", "http://127.0.0.1:5173"];
 builder.Services.AddCors(options => options.AddPolicy("Frontend", policy =>
-    policy.WithOrigins("http://localhost:5173", "http://127.0.0.1:5173")
+    policy.WithOrigins(frontendOrigins)
         .AllowAnyHeader()
         .AllowAnyMethod()));
 
@@ -133,6 +123,6 @@ await app.RunAsync();
 static string RequiredSetting(IConfiguration configuration, string name) =>
     configuration[name]?.Trim() is { Length: > 0 } value
         ? value
-        : throw new InvalidOperationException($"Configuração obrigatória ausente: {name}. Configure o arquivo .env antes de iniciar a API.");
+        : throw new InvalidOperationException($"Configuração obrigatória ausente: {name}. Configure as variáveis de ambiente da API (use __ no lugar de :).");
 
 public partial class Program { }

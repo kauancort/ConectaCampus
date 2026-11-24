@@ -1,21 +1,20 @@
-# Mantido para reutilizar o volume MySQL já existente sem recriá-lo.
+# Mantém o namespace existente. O volume MySQL antigo não é reutilizado nem removido.
 name: aprendizagem-colaborativa
 
 services:
-  mysql:
-    image: mysql:8.4.13
+  postgres:
+    image: postgres:17
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASE:?Defina MYSQL_DATABASE no arquivo .env}
-      MYSQL_USER: ${MYSQL_USER:?Defina MYSQL_USER no arquivo .env}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Defina MYSQL_PASSWORD no arquivo .env}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Defina MYSQL_ROOT_PASSWORD no arquivo .env}
+      POSTGRES_DB: ${POSTGRES_DB:?Defina POSTGRES_DB no arquivo .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Defina POSTGRES_USER no arquivo .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}
     ports:
-      - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping --host=127.0.0.1 --user=root --password=$$MYSQL_ROOT_PASSWORD --silent"]
+      test: ["CMD-SHELL", "pg_isready --host=127.0.0.1 --username=$$POSTGRES_USER --dbname=$$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -31,17 +30,13 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_HTTP_PORTS: "8080"
-      MYSQL_HOST: mysql
-      MYSQL_PORT: "3306"
-      MYSQL_DATABASE: ${MYSQL_DATABASE:?Defina MYSQL_DATABASE no arquivo .env}
-      MYSQL_USER: ${MYSQL_USER:?Defina MYSQL_USER no arquivo .env}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Defina MYSQL_PASSWORD no arquivo .env}
+      ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection:?Defina ConnectionStrings__DefaultConnection no arquivo .env}
       JWT_ISSUER: ${JWT_ISSUER:?Defina JWT_ISSUER no arquivo .env}
       JWT_AUDIENCE: ${JWT_AUDIENCE:?Defina JWT_AUDIENCE no arquivo .env}
       JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:?Defina JWT_SIGNING_KEY no arquivo .env}
       JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-60}
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
     ports:
       - "127.0.0.1:5077:8080"
@@ -61,4 +56,4 @@ services:
       - "127.0.0.1:5173:80"
 
 volumes:
-  mysql_data:
+  postgres_data:
