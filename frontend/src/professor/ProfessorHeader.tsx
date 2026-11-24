@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '../auth'
 
 export default function ProfessorHeader() {
-  const { student } = useAuth()
+  const { student, signOut } = useAuth()
 
   return <header className="topbar professor-header">
     <NavLink className="brand" to="/professor/atividades">ConectaCampus</NavLink>
@@ -14,6 +14,9 @@ export default function ProfessorHeader() {
         Cadastrar atividade
       </NavLink>
     </nav>
-    {student && <div className="account"><span>{student.name}</span></div>}
+    <div className="account">
+      <NavLink className="nav-link" to="/">Área do aluno</NavLink>
+      {student && <><span>{student.name}</span><button className="button secondary small" type="button" onClick={signOut}>Sair</button></>}
+    </div>
   </header>
 }
