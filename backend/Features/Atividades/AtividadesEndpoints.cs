@@ -47,7 +47,7 @@ public static class AtividadesEndpoints
             }
 
             return Results.Created($"/api/atividades/{result.Atividade!.Id}", result.Atividade);
-        }).RequireAuthorization();
+        }).RequireAuthorization("Professor");
 
         group.MapGet("", async (
             string? tema,
@@ -73,7 +73,7 @@ public static class AtividadesEndpoints
 
             var atividades = await repository.ListarDoResponsavelAsync(responsavelId, cancellationToken);
             return Results.Ok(atividades.Select(service.ToResponse));
-        }).RequireAuthorization();
+        }).RequireAuthorization("Professor");
 
         group.MapGet("/{id}", async (
             string id,

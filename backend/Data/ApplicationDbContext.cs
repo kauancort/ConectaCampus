@@ -23,6 +23,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         {
             entity.Property(aluno => aluno.Nome).HasMaxLength(200).IsRequired();
             entity.Property(aluno => aluno.Curso).HasMaxLength(120).IsRequired();
+            entity.Property(aluno => aluno.TipoConta).HasMaxLength(20).HasDefaultValue(TiposConta.Aluno).IsRequired();
+            entity.ToTable(table => table.HasCheckConstraint("CK_AspNetUsers_TipoConta", "\"TipoConta\" IN ('aluno', 'professor')"));
             entity.HasIndex(aluno => aluno.NormalizedEmail).IsUnique().HasDatabaseName("EmailIndex");
         });
         builder.Entity<Sala>(entity =>

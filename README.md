@@ -35,6 +35,14 @@ As reservas usam transações e `SELECT ... FOR UPDATE` no PostgreSQL. Reservas 
 | Autenticação | ASP.NET Core Identity e JWT |
 | Ambiente local | Docker Compose |
 
+## Cadastro de aluno e professor
+
+Na tela de acesso (`/login`), escolha **Entrar**, **Cadastro de aluno** ou **Cadastro de professor**. O login é único para os dois perfis: professores seguem para **Minhas atividades**, com acesso a **Cadastrar atividade**; alunos seguem para o catálogo e suas inscrições. A área do professor também fica disponível pelo menu para contas desse perfil.
+
+O cadastro recebe `accountType` com o valor `aluno` ou `professor`, escolhido pelo usuário. O perfil é salvo no banco e retornado no cadastro, login e `/api/auth/me`; o JWT inclui a claim `account_type`. Requisições antigas de cadastro sem esse campo continuam criando contas de aluno. A API exige perfil de professor em `POST /api/atividades` e `GET /api/atividades/minhas`; contas de aluno recebem HTTP 403 nessas rotas.
+
+A migration automática `AddAccountTypes` adiciona o perfil sem apagar usuários ou atividades. Contas que já organizavam ou eram responsáveis por atividades recebem o perfil de professor; as demais recebem aluno. Após atualizar o backend e o frontend, saia e entre novamente para renovar o token e o perfil salvo no navegador. O `vercel.json` do frontend permite abrir e recarregar `/login` e as rotas do professor diretamente na Vercel.
+
 ## Executar localmente
 
 ### Pré-requisitos
@@ -171,11 +179,11 @@ Valores aceitos:
 
 ## Testes
 
-Validação local desta migração: build Release e publish concluídos sem erros, imagem construída com o Dockerfile existente e Compose validado. Os 41 testes passaram com PostgreSQL 17, inclusive em uma segunda execução com TLS e `SSL Mode=VerifyFull`. A imagem Linux também iniciou sobre um banco vazio, criou automaticamente as nove tabelas (incluindo o histórico), respondeu HTTP 200 em `/health` e teve conexão TLS 1.3 confirmada em `pg_stat_ssl`. O EF não detectou diferenças entre o modelo e a migration.
+Validação atual: builds do frontend e backend Release concluídos sem erros e 46 testes aprovados com PostgreSQL 17. O teste de atualização de um banco com usuários e atividade existentes preservou os registros e atribuiu os perfis esperados. A verificação em navegador cobriu sete cenários de cadastro, login, publicação por professor, persistência da sessão e bloqueio de alunos na área do professor e na API, sem erros JavaScript. O cadastro foi inspecionado em desktop e celular, sem rolagem horizontal.
 
 Para compilar e executar a suíte com um PostgreSQL exclusivo para testes, consulte [backend.tests/README.md](backend.tests/README.md). Os testes usam o provider real, migrations automáticas, Identity e JWT, incluindo concorrência, duplicidade, rollback, cancelamento e reinscrição. Não aponte testes para o banco local de desenvolvimento.
 
-O frontend não foi alterado nesta migração. Teste interativo completo no navegador, carga k6/JMeter, Lighthouse e viewports responsivos continuam pendentes.
+Carga k6/JMeter, Lighthouse e a verificação de todas as telas em todos os tamanhos continuam pendentes.
 
 ## Equipe
 

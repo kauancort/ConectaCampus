@@ -40,7 +40,8 @@ public static class AuthEndpoints
                 UserName = email,
                 Email = email,
                 Nome = name,
-                Curso = course
+                Curso = course,
+                TipoConta = request.AccountType?.Trim().ToLowerInvariant() ?? TiposConta.Aluno
             };
 
             try
@@ -88,7 +89,8 @@ public static class AuthEndpoints
             {
                 new Claim(JwtRegisteredClaimNames.Sub, student.Id),
                 new Claim(JwtRegisteredClaimNames.Email, student.Email!),
-                new Claim("name", student.Nome)
+                new Claim("name", student.Nome),
+                new Claim("account_type", student.TipoConta)
             };
             var token = new JwtSecurityToken(
                 issuer: jwt.Issuer,
@@ -130,6 +132,12 @@ public static class AuthEndpoints
         AddRequired(errors, "email", request.Email);
         AddRequired(errors, "course", request.Course);
         AddRequired(errors, "password", request.Password);
+
+        if (request.AccountType is not null &&
+            request.AccountType.Trim().ToLowerInvariant() is not (TiposConta.Aluno or TiposConta.Professor))
+        {
+            errors["accountType"] = ["Escolha aluno ou professor para o tipo de conta."];
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Email))
         {
@@ -184,7 +192,7 @@ public static class AuthEndpoints
     }
 
     private static StudentResponse ToResponse(Aluno student) =>
-        new(student.Id, student.Nome, student.Email!, student.Curso);
+        new(student.Id, student.Nome, student.Email!, student.Curso, student.TipoConta);
 
     private static string TranslateIdentityError(IdentityError error) => error.Code switch
     {

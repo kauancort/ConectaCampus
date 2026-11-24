@@ -3,6 +3,7 @@ export interface Student {
   name: string
   email: string
   course: string
+  accountType: 'aluno' | 'professor'
 }
 
 export interface LoginResponse {

@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ApiError, apiRequest, type Activity, type Enrollment, type LoginResponse, type Seat, type SeatMap } from './api'
 import { useAuth } from './auth'
 
@@ -32,7 +33,9 @@ function titleCase(value: string) {
 
 export default function App() {
   const { token, student, signIn, signOut, api } = useAuth()
-  const [page, setPage] = useState<Page>('catalogo')
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [page, setPage] = useState<Page>(location.pathname === '/login' ? 'conta' : 'catalogo')
   const [activities, setActivities] = useState<Activity[]>([])
   const [theme, setTheme] = useState('')
   const [catalogLoading, setCatalogLoading] = useState(true)
@@ -44,7 +47,8 @@ export default function App() {
   const [seatMap, setSeatMap] = useState<SeatMap | null>(null)
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null)
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  const [authMode, setAuthMode] = useState<'login' | 'aluno' | 'professor'>('login')
+  const [authSubmitting, setAuthSubmitting] = useState(false)
   const [authForm, setAuthForm] = useState({ name: '', email: '', course: '', password: '' })
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -92,7 +96,13 @@ export default function App() {
     }
   }
 
-  useEffect(() => { void loadCatalog('') }, [])
+  useEffect(() => {
+    if (location.pathname !== '/login') void loadCatalog('')
+  }, [location.pathname])
+  useEffect(() => {
+    if (location.pathname === '/login') setPage('conta')
+    else setPage(current => current === 'conta' ? 'catalogo' : current)
+  }, [location.pathname])
   useEffect(() => {
     if (token) void loadEnrollments(false)
     else setEnrollments([])
@@ -123,16 +133,18 @@ export default function App() {
 
   const submitAuth = async (event: FormEvent) => {
     event.preventDefault()
+    if (authSubmitting) return
+    setAuthSubmitting(true)
     clearFeedback()
     try {
-      if (authMode === 'register') {
+      if (authMode !== 'login') {
         await apiRequest('/api/auth/register', {
           method: 'POST',
-          body: JSON.stringify({ name: authForm.name, email: authForm.email, course: authForm.course, password: authForm.password }),
+          body: JSON.stringify({ name: authForm.name, email: authForm.email, course: authForm.course, password: authForm.password, accountType: authMode }),
         })
         setAuthMode('login')
         setAuthForm(current => ({ ...current, password: '' }))
-        setNotice('Cadastro realizado. Entre com seu e-mail e senha.')
+        setNotice(`Cadastro de ${authMode} realizado. Entre com seu e-mail e senha.`)
         return
       }
       const result = await apiRequest<LoginResponse>('/api/auth/login', {
@@ -141,9 +153,12 @@ export default function App() {
       })
       signIn(result.accessToken, result.student)
       setPage('catalogo')
+      navigate(result.student.accountType === 'professor' ? '/professor/atividades' : '/')
       setNotice(`Bem-vindo(a), ${result.student.name}.`)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Não foi possível acessar sua conta.')
+    } finally {
+      setAuthSubmitting(false)
     }
   }
 
@@ -181,6 +196,8 @@ export default function App() {
   const goTo = (nextPage: Page) => {
     clearFeedback()
     setPage(nextPage)
+    if (nextPage === 'conta') navigate('/login')
+    else if (location.pathname === '/login') navigate('/')
   }
 
   const columns = seatMap?.sala.tipo.toUpperCase() === 'NOTEBOOK' ? 5 : 6
@@ -191,6 +208,7 @@ export default function App() {
       <nav aria-label="Navegação da área do aluno">
         <button className={page === 'catalogo' || page === 'detalhe' || page === 'assentos' ? 'nav-link active' : 'nav-link'} type="button" onClick={() => goTo('catalogo')}>Atividades</button>
         {student && <button className={page === 'inscricoes' ? 'nav-link active' : 'nav-link'} type="button" onClick={() => { goTo('inscricoes'); void loadEnrollments() }}>Minhas inscrições</button>}
+        {student?.accountType === 'professor' && <Link className="nav-link" to="/professor/atividades">Área do professor</Link>}
       </nav>
       <div className="account">
         {student
@@ -202,7 +220,7 @@ export default function App() {
     <main className="main-content">
       <div className="heading">
         <div>
-          <p className="eyebrow">ÁREA DO ALUNO</p>
+          <p className="eyebrow">{page === 'conta' ? 'SUA CONTA' : student?.accountType === 'professor' ? 'ÁREA DO PROFESSOR' : 'ÁREA DO ALUNO'}</p>
           <h1>{page === 'catalogo' ? 'Aulas e palestras' : page === 'detalhe' ? 'Detalhes da atividade' : page === 'assentos' ? 'Escolha seu assento' : page === 'inscricoes' ? 'Minhas inscrições' : 'Acesse sua conta'}</h1>
           <p className="subtitle">{page === 'assentos' ? 'A seleção só é confirmada depois da inscrição.' : 'Encontre atividades acadêmicas e participe.'}</p>
         </div>
@@ -288,12 +306,18 @@ export default function App() {
       </>}
 
       {page === 'conta' && <section className="panel narrow">
-        <div className="tabs"><button className={authMode === 'login' ? 'tab active' : 'tab'} type="button" onClick={() => setAuthMode('login')}>Entrar</button><button className={authMode === 'register' ? 'tab active' : 'tab'} type="button" onClick={() => setAuthMode('register')}>Criar cadastro</button></div>
+        <div className="tabs auth-tabs" aria-label="Acesso e cadastro">
+          {(['login', 'aluno', 'professor'] as const).map(mode => <button key={mode} className={authMode === mode ? 'tab active' : 'tab'} type="button" aria-pressed={authMode === mode} disabled={authSubmitting} onClick={() => { setAuthMode(mode); clearFeedback() }}>
+            {mode === 'login' ? 'Entrar' : `Cadastro de ${mode}`}
+          </button>)}
+        </div>
+        <h2 className="auth-title">{authMode === 'login' ? 'Bem-vindo ao ConectaCampus' : `Crie sua conta de ${authMode}`}</h2>
+        <p className="auth-description">{authMode === 'login' ? 'Entre com seu e-mail e senha. Seu perfil abre a área correspondente.' : authMode === 'professor' ? 'Cadastre aulas e palestras, reserve salas e acompanhe suas atividades.' : 'Encontre aulas e palestras, escolha seu assento e acompanhe suas inscrições.'}</p>
         <form onSubmit={event => void submitAuth(event)} className="form-grid">
-          {authMode === 'register' && <><label>Nome<input required maxLength={200} value={authForm.name} onChange={event => setAuthForm({ ...authForm, name: event.target.value })} /></label><label>Curso<input required maxLength={120} value={authForm.course} onChange={event => setAuthForm({ ...authForm, course: event.target.value })} /></label></>}
+          {authMode !== 'login' && <><label>Nome<input required autoComplete="name" maxLength={200} value={authForm.name} onChange={event => setAuthForm({ ...authForm, name: event.target.value })} /></label><label>{authMode === 'professor' ? 'Curso / área de atuação' : 'Curso'}<input required maxLength={120} value={authForm.course} onChange={event => setAuthForm({ ...authForm, course: event.target.value })} /></label></>}
           <label>E-mail<input type="email" required autoComplete="email" value={authForm.email} onChange={event => setAuthForm({ ...authForm, email: event.target.value })} /></label>
           <label>Senha<input type="password" required autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} value={authForm.password} onChange={event => setAuthForm({ ...authForm, password: event.target.value })} /></label>
-          <button className="button primary" type="submit">{authMode === 'login' ? 'Entrar' : 'Criar conta'}</button>
+          <button className="button primary" type="submit" disabled={authSubmitting}>{authSubmitting ? 'Aguarde…' : authMode === 'login' ? 'Entrar' : `Criar conta de ${authMode}`}</button>
         </form>
       </section>}
     </main>

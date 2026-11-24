@@ -55,7 +55,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             NameClaimType = "name"
         };
     });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options => options.AddPolicy("Professor", policy =>
+    policy.RequireAuthenticatedUser().RequireClaim("account_type", TiposConta.Professor)));
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails(options =>
 {

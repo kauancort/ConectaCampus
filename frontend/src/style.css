@@ -94,6 +94,12 @@ textarea { resize: vertical; }
 .tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #dce5e0; }
 .tab { padding: 10px 12px; border: 0; background: transparent; color: #567168; }
 .tab.active { color: #08724e; border-bottom: 3px solid #08724e; font-weight: 750; }
+.auth-tabs { flex-wrap: wrap; gap: 4px; }
+.auth-tabs .tab { flex: 1; min-width: 100px; padding-inline: 8px; }
+.auth-tabs .tab:disabled { cursor: wait; }
+.auth-title { color: #173d35; font-size: 1.2rem; }
+.auth-description { margin: 10px 0 24px; color: #587069; line-height: 1.5; }
+.topbar a.nav-link { text-decoration: none; }
 .form-grid { display: grid; gap: 16px; }
 .two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .span-two { grid-column: 1 / -1; }

@@ -1,12 +1,14 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth'
 
 export default function ProfessorHeader() {
-  const { student } = useAuth()
+  const { student, signOut } = useAuth()
+  const navigate = useNavigate()
 
   return <header className="topbar professor-header">
     <NavLink className="brand" to="/professor/atividades">ConectaCampus</NavLink>
     <nav aria-label="Navegação da área do professor">
+      <NavLink className="nav-link" to="/">Catálogo</NavLink>
       <NavLink className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} end to="/professor/atividades">
         Minhas atividades
       </NavLink>
@@ -14,6 +16,6 @@ export default function ProfessorHeader() {
         Cadastrar atividade
       </NavLink>
     </nav>
-    {student && <div className="account"><span>{student.name}</span></div>}
+    {student && <div className="account"><span>{student.name}</span><button className="button secondary small" type="button" onClick={() => { signOut(); navigate('/login') }}>Sair</button></div>}
   </header>
 }
