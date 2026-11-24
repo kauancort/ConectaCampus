@@ -33,6 +33,7 @@ public sealed class AtividadeRepository(ApplicationDbContext db)
         CancellationToken cancellationToken) =>
         db.Atividades.AnyAsync(atividade =>
             atividade.SalaId == salaId &&
+            atividade.Status != "cancelada" &&
             atividade.Inicio < fim &&
             inicio < atividade.Fim,
             cancellationToken);
@@ -50,7 +51,11 @@ public sealed class AtividadeRepository(ApplicationDbContext db)
     {
         var query = db.Atividades.AsNoTracking()
             .Include(atividade => atividade.Sala)
-            .Where(atividade => atividade.SalaId != null && atividade.Inicio != null && atividade.Fim != null);
+            .Where(atividade =>
+                atividade.Status == "publicada" &&
+                atividade.SalaId != null &&
+                atividade.Inicio != null &&
+                atividade.Fim != null);
 
         if (!string.IsNullOrWhiteSpace(tema))
         {

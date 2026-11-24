@@ -116,7 +116,9 @@ function listFromResponse(response: unknown): unknown[] {
 
 function detailFromResponse(response: unknown): unknown {
   const body = asRecord(response)
-  return body?.atividade ?? body?.data ?? response
+  const wrappedActivity = asRecord(body?.atividade)
+  const wrappedData = asRecord(body?.data)
+  return wrappedActivity ?? wrappedData ?? response
 }
 
 function dateLabel(value: string | null) {

@@ -42,6 +42,7 @@ export default function App() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [seatLoading, setSeatLoading] = useState(false)
   const [confirmingSeat, setConfirmingSeat] = useState(false)
+  const [cancellingEnrollmentId, setCancellingEnrollmentId] = useState<string | null>(null)
   const [enrollmentsLoading, setEnrollmentsLoading] = useState(false)
   const [selected, setSelected] = useState<Activity | null>(null)
   const [seatMap, setSeatMap] = useState<SeatMap | null>(null)
@@ -193,6 +194,29 @@ export default function App() {
     }
   }
 
+  const cancelEnrollment = async (enrollment: Enrollment) => {
+    if (!token) {
+      setPage('conta')
+      setError('Entre na sua conta para cancelar a inscrição.')
+      return
+    }
+
+    setCancellingEnrollmentId(enrollment.id)
+    clearFeedback()
+    try {
+      await api<void>(`/api/atividades/${encodeURIComponent(enrollment.atividadeId)}/inscricoes/me`, {
+        method: 'DELETE',
+      })
+      await loadEnrollments(false)
+      if (selected?.id === enrollment.atividadeId) await loadSeatMap(enrollment.atividadeId, true)
+      setNotice(`Inscrição em “${enrollment.tema}” cancelada.`)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Não foi possível cancelar sua inscrição.')
+    } finally {
+      setCancellingEnrollmentId(null)
+    }
+  }
+
   const goTo = (nextPage: Page) => {
     clearFeedback()
     setPage(nextPage)
@@ -300,7 +324,12 @@ export default function App() {
               <span><b>Sala</b>{item.sala?.nome ?? item.local}</span>
               <span><b>Assento</b>{item.assento?.codigo ?? 'Não informado'}</span>
             </div>
-            <div className="card-bottom"><button className="text-button" type="button" onClick={() => void openActivity(item.atividadeId)}>Ver atividade</button></div>
+            <div className="card-bottom">
+              <button className="text-button" type="button" onClick={() => void openActivity(item.atividadeId)}>Ver atividade</button>
+              {item.status === 'ativa' && <button className="text-button" type="button" disabled={cancellingEnrollmentId !== null} onClick={() => void cancelEnrollment(item)}>
+                {cancellingEnrollmentId === item.id ? 'Cancelando…' : 'Cancelar inscrição'}
+              </button>}
+            </div>
           </article>)}
         </div>}
       </>}

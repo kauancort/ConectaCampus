@@ -179,7 +179,7 @@ Valores aceitos:
 
 ## Testes
 
-Validação atual: builds do frontend e backend Release concluídos sem erros e 52 testes aprovados com PostgreSQL 17 e SSL `VerifyFull`. O teste automatizado de atualização de um banco auxiliar preservou usuários, hashes de senha e atividade existentes e atribuiu os perfis esperados. Também foram verificados tokens adulterados, acesso sem login e tentativas de alterar o perfil por requisições. A verificação em navegador cobriu sete cenários de cadastro, login, publicação por professor, persistência da sessão e bloqueio de alunos na área do professor e na API, sem erros JavaScript. O cadastro foi inspecionado em desktop e celular, sem rolagem horizontal.
+Validação atual: builds do frontend e backend Release concluídos sem erros, 58 testes do backend aprovados com PostgreSQL 17 e 12 testes do frontend aprovados com Vitest. O teste automatizado de atualização de um banco auxiliar preservou usuários, hashes de senha e atividade existentes e atribuiu os perfis esperados. Também foram verificados tokens adulterados, acesso sem login e tentativas de alterar o perfil por requisições. A verificação em navegador cobriu sete cenários de cadastro, login, publicação por professor, persistência da sessão e bloqueio de alunos na área do professor e na API, sem erros JavaScript. O cadastro foi inspecionado em desktop e celular, sem rolagem horizontal.
 
 Para compilar e executar a suíte com um PostgreSQL exclusivo para testes, consulte [backend.tests/README.md](backend.tests/README.md). Os testes usam o provider real, migrations automáticas, Identity e JWT, incluindo concorrência, duplicidade, rollback, cancelamento e reinscrição. Não aponte testes para o banco local de desenvolvimento.
 

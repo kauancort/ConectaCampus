@@ -54,7 +54,7 @@ Os 21 casos novos de integração verificam o mapa público sem dados pessoais, 
 entre atividades, autenticação, uso do aluno do token, consulta das próprias inscrições,
 assentos inválidos, duplicidade, concorrência, cancelamento e reinscrição. Também provocam
 uma violação real do índice único para verificar HTTP 409 e rollback da transação.
-Somados aos testes existentes, unitários, de migração PostgreSQL e de perfis de conta, são 52 casos.
+Somados aos testes existentes, unitários, de migração PostgreSQL e de perfis de conta, são 58 casos.
 Os casos adicionais validam reaplicação das migrations sem duplicar o seed, isolamento
 das tabelas/Identity em schema privado e filtros por tema sem distinguir maiúsculas,
 com `%`, `_` e `\` tratados como texto literal.
@@ -70,9 +70,10 @@ O teste de atualização aplica a migration inicial em um banco auxiliar, cria c
 atividade legadas e aplica `AddAccountTypes`: organizador e responsável tornam-se professores,
 o aluno permanece aluno, e IDs, dados, hashes de senha e atividade são preservados.
 
-Na validação desta entrega, os 52 casos passaram com `SSL Mode=VerifyFull` em PostgreSQL 17,
-usando certificado de teste temporário e os papéis `anon`, `authenticated` e `service_role`
-sem acesso ao schema privado. O teste de atualização removeu seu banco auxiliar.
+Na validação da integração, os 58 casos passaram em PostgreSQL 17 local, incluindo as novas
+verificações de intervalos adjacentes e de atividades canceladas, que saem do catálogo e
+liberam a sala. O teste de atualização removeu seu banco auxiliar. A suíte anterior de
+52 casos também foi validada com `SSL Mode=VerifyFull` e certificado temporário.
 
 ## Contratos implementados
 

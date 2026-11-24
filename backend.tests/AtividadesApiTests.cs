@@ -16,6 +16,31 @@ namespace AprendizagemColaborativa.Api.Tests;
 public sealed class AtividadesApiTests(WebApplicationFactory<Program> factory)
 {
     [Fact]
+    public async Task Rotas_de_criacao_e_minhas_exigem_autenticacao()
+    {
+        using var client = factory.CreateClient();
+        using var create = await client.PostAsJsonAsync("/api/atividades", CreateRequest("DESKTOP"));
+        using var mine = await client.GetAsync("/api/atividades/minhas");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, create.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, mine.StatusCode);
+    }
+
+    [Fact]
+    public async Task Tipos_de_sala_sao_publicos_e_expoem_capacidade()
+    {
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync("/api/salas/tipos");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Contains(body.RootElement.EnumerateArray(), item =>
+            item.GetProperty("tipo").GetString() == "DESKTOP" && item.GetProperty("capacidade").GetInt32() == 24);
+        Assert.Contains(body.RootElement.EnumerateArray(), item =>
+            item.GetProperty("tipo").GetString() == "NOTEBOOK" && item.GetProperty("capacidade").GetInt32() == 20);
+    }
+
+    [Fact]
     public async Task Criar_atividade_retorna_sala_e_aparece_nas_listagens()
     {
         var authenticated = await CreateAuthenticatedClientAsync();
@@ -74,6 +99,75 @@ public sealed class AtividadesApiTests(WebApplicationFactory<Program> factory)
             await DeleteStudentAsync(authenticated.Email);
             authenticated.Client.Dispose();
         }
+    }
+
+    [Fact]
+    public async Task Criar_atividade_rejeita_modalidade_tipo_de_sala_e_data_invalidos()
+    {
+        var authenticated = await CreateAuthenticatedClientAsync();
+        try
+        {
+            var invalid = new
+            {
+                tema = "Dados inválidos", descricao = "Validações da atividade.", modalidade = "CURSO",
+                tipoSala = "AUDITORIO", inicio = "2032-01-15T14:00:00", fim = "2032-01-15T16:00:00"
+            };
+
+            using var response = await authenticated.Client.PostAsJsonAsync("/api/atividades", invalid);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var errors = body.RootElement.GetProperty("errors");
+            Assert.True(errors.TryGetProperty("modalidade", out _));
+            Assert.True(errors.TryGetProperty("tipoSala", out _));
+            Assert.True(errors.TryGetProperty("inicio", out _));
+            Assert.True(errors.TryGetProperty("fim", out _));
+        }
+        finally
+        {
+            await DeleteStudentAsync(authenticated.Email);
+            authenticated.Client.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Horarios_encostados_nao_sao_conflitantes()
+    {
+        var authenticated = await CreateAuthenticatedClientAsync();
+        try
+        {
+            var inicio = new DateTimeOffset(2033, 1, 15, 14, 0, 0, TimeSpan.Zero);
+            var firstRequest = new
+            {
+                tema = "Primeiro horário", descricao = "Reserva até as dezesseis horas.", modalidade = "AULA", tipoSala = "NOTEBOOK",
+                inicio = inicio.ToString("O"), fim = inicio.AddHours(2).ToString("O")
+            };
+            var secondRequest = new
+            {
+                tema = "Segundo horário", descricao = "Reserva iniciada quando a anterior termina.", modalidade = "AULA", tipoSala = "NOTEBOOK",
+                inicio = inicio.AddHours(2).ToString("O"), fim = inicio.AddHours(4).ToString("O")
+            };
+
+            using var first = await authenticated.Client.PostAsJsonAsync("/api/atividades", firstRequest);
+            using var second = await authenticated.Client.PostAsJsonAsync("/api/atividades", secondRequest);
+            Assert.Equal(HttpStatusCode.Created, first.StatusCode);
+            Assert.Equal(HttpStatusCode.Created, second.StatusCode);
+        }
+        finally
+        {
+            await DeleteStudentAsync(authenticated.Email);
+            authenticated.Client.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Consulta_de_atividade_valida_o_identificador_e_distingue_ausencia()
+    {
+        using var client = factory.CreateClient();
+        using var invalid = await client.GetAsync("/api/atividades/invalido");
+        using var absent = await client.GetAsync($"/api/atividades/{Guid.NewGuid()}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, absent.StatusCode);
     }
 
     [Fact]
@@ -146,6 +240,42 @@ public sealed class AtividadesApiTests(WebApplicationFactory<Program> factory)
             Assert.Contains(result.RootElement.EnumerateArray(), item => item.GetProperty("id").GetGuid() == id);
             Assert.All(result.RootElement.EnumerateArray(), item =>
                 Assert.Contains(filtro, item.GetProperty("tema").GetString()!, StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            await DeleteStudentAsync(authenticated.Email);
+            authenticated.Client.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Atividade_cancelada_nao_aparece_no_catalogo_e_libera_a_sala()
+    {
+        var authenticated = await CreateAuthenticatedClientAsync();
+        try
+        {
+            var request = CreateRequest("DESKTOP", "Atividade cancelada");
+            using var first = await authenticated.Client.PostAsJsonAsync("/api/atividades", request);
+            Assert.Equal(HttpStatusCode.Created, first.StatusCode);
+            using var created = JsonDocument.Parse(await first.Content.ReadAsStringAsync());
+            var activityId = created.RootElement.GetProperty("id").GetGuid();
+
+            using (var scope = factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var activity = await db.Atividades.SingleAsync(item => item.Id == activityId);
+                activity.Status = "cancelada";
+                await db.SaveChangesAsync();
+            }
+
+            using var catalog = await authenticated.Client.GetAsync("/api/atividades?tema=Atividade%20cancelada");
+            Assert.Equal(HttpStatusCode.OK, catalog.StatusCode);
+            using var catalogJson = JsonDocument.Parse(await catalog.Content.ReadAsStringAsync());
+            Assert.DoesNotContain(catalogJson.RootElement.EnumerateArray(), item =>
+                item.GetProperty("id").GetGuid() == activityId);
+
+            using var replacement = await authenticated.Client.PostAsJsonAsync("/api/atividades", request);
+            Assert.Equal(HttpStatusCode.Created, replacement.StatusCode);
         }
         finally
         {
