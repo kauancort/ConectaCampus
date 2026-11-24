@@ -49,6 +49,38 @@ describe('jornadas da área do aluno', () => {
 
     expect(await screen.findByText('Oficina de testes')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Área do professor' }).getAttribute('href')).toBe('/professor/atividades')
+    expect(screen.getByRole('link', { name: 'Lançar aula' }).getAttribute('href')).toBe('/professor/atividades/nova')
+  })
+
+  it('recupera o botão de lançar aula quando o perfil salvo é anterior à inclusão do tipo de conta', async () => {
+    const profile = { id: 'professor-1', name: 'Professor', email: 'prof@example.test', course: 'DSM' }
+    localStorage.setItem('ac-token', 'token-de-teste')
+    localStorage.setItem('ac-student', JSON.stringify(profile))
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url === '/api/auth/me') return Promise.resolve(json({ ...profile, accountType: 'professor' }))
+      if (url === '/api/atividades' || url === '/api/inscricoes/minhas') return Promise.resolve(json([]))
+      return Promise.reject(new Error(`Rota inesperada: ${url}`))
+    }))
+
+    renderApp()
+
+    expect((await screen.findByRole('link', { name: 'Lançar aula' })).getAttribute('href')).toBe('/professor/atividades/nova')
+    expect(JSON.parse(localStorage.getItem('ac-student')!).accountType).toBe('professor')
+  })
+
+  it('não exibe lançar aula para contas de aluno', async () => {
+    const profile = { id: 'aluno-1', name: 'Aluno', email: 'aluno@example.test', course: 'DSM', accountType: 'aluno' }
+    localStorage.setItem('ac-token', 'token-de-teste')
+    localStorage.setItem('ac-student', JSON.stringify(profile))
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url === '/api/auth/me') return Promise.resolve(json(profile))
+      return Promise.resolve(json([]))
+    }))
+
+    renderApp()
+    await screen.findByText('Nenhuma atividade encontrada. Tente outro tema.')
+
+    expect(screen.queryByRole('link', { name: 'Lançar aula' })).toBeNull()
   })
 
   it('permite criar conta, entrar e sair sem deixar a sessão armazenada', async () => {

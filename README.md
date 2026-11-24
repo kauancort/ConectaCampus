@@ -37,7 +37,7 @@ As reservas usam transações e `SELECT ... FOR UPDATE` no PostgreSQL. Reservas 
 
 ## Cadastro de aluno e professor
 
-Na tela de acesso (`/login`), escolha **Entrar**, **Cadastro de aluno** ou **Cadastro de professor**. O login é único para os dois perfis: professores seguem para **Minhas atividades**, com acesso a **Cadastrar atividade**; alunos seguem para o catálogo e suas inscrições. A área do professor também fica disponível pelo menu para contas desse perfil.
+Na tela de acesso (`/login`), escolha **Entrar**, **Cadastro de aluno** ou **Cadastro de professor**. O login é único para os dois perfis: professores seguem para **Minhas atividades**, com o botão **Lançar aula**; alunos seguem para o catálogo e suas inscrições. Professores também encontram **Lançar aula** diretamente no catálogo. Ao reabrir uma sessão, o frontend consulta `/api/auth/me` e atualiza o perfil salvo, aguardando essa consulta antes de decidir o acesso às rotas do professor.
 
 O cadastro recebe `accountType` com o valor `aluno` ou `professor`, escolhido pelo usuário. O perfil é salvo no banco e retornado no cadastro, login e `/api/auth/me`; o JWT inclui a claim `account_type`. Requisições antigas de cadastro sem esse campo continuam criando contas de aluno. A API exige perfil de professor em `POST /api/atividades` e `GET /api/atividades/minhas`; contas de aluno recebem HTTP 403 nessas rotas.
 
@@ -179,7 +179,7 @@ Valores aceitos:
 
 ## Testes
 
-Validação atual: builds do frontend e backend Release concluídos sem erros, 58 testes do backend aprovados com PostgreSQL 17 e 12 testes do frontend aprovados com Vitest. O teste automatizado de atualização de um banco auxiliar preservou usuários, hashes de senha e atividade existentes e atribuiu os perfis esperados. Também foram verificados tokens adulterados, acesso sem login e tentativas de alterar o perfil por requisições. A verificação em navegador cobriu sete cenários de cadastro, login, publicação por professor, persistência da sessão e bloqueio de alunos na área do professor e na API, sem erros JavaScript. O cadastro foi inspecionado em desktop e celular, sem rolagem horizontal.
+Validação atual: builds do frontend e backend Release concluídos sem erros, 58 testes do backend aprovados com PostgreSQL 17 e 17 testes do frontend aprovados com Vitest. O teste automatizado de atualização de um banco auxiliar preservou usuários, hashes de senha e atividade existentes e atribuiu os perfis esperados. Também foram verificados tokens adulterados, acesso sem login e tentativas de alterar o perfil por requisições. A verificação em navegador cobriu sete cenários de cadastro, login, publicação por professor, persistência da sessão e bloqueio de alunos na área do professor e na API, sem erros JavaScript. O cadastro e o acesso a **Lançar aula** foram inspecionados em desktop e celular, sem rolagem horizontal. Os novos testes verificam recuperação de perfis antigos, bloqueio de alunos e encerramento de sessões expiradas.
 
 Para compilar e executar a suíte com um PostgreSQL exclusivo para testes, consulte [backend.tests/README.md](backend.tests/README.md). Os testes usam o provider real, migrations automáticas, Identity e JWT, incluindo concorrência, duplicidade, rollback, cancelamento e reinscrição. Não aponte testes para o banco local de desenvolvimento.
 

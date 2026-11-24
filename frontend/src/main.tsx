@@ -1,19 +1,12 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
-import { AuthProvider, useAuth } from './auth'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { AuthProvider } from './auth'
 import App from './App'
 import ActivityRegistrationPage from './professor/ActivityRegistrationPage'
 import MyActivitiesPage from './professor/MyActivitiesPage'
+import ProfessorRoute from './professor/ProfessorRoute'
 import './style.css'
-
-function ProfessorRoute() {
-  const { token, student } = useAuth()
-  const location = useLocation()
-  if (!token) return <Navigate to="/login" replace state={{ from: location.pathname }} />
-  if (student?.accountType !== 'professor') return <Navigate to="/" replace />
-  return <Outlet />
-}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

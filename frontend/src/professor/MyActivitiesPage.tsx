@@ -214,12 +214,15 @@ export default function MyActivitiesPage() {
           <h1>Minhas atividades</h1>
           <p className="subtitle">Consulte as atividades cadastradas e os detalhes das salas reservadas.</p>
         </div>
-        {!selected && <label className="sort-control">Ordenar por data
+        <div className="professor-heading-actions">
+          <button className="button primary" type="button" onClick={() => navigate('/professor/atividades/nova')}>Lançar aula</button>
+          {!selected && <label className="sort-control">Ordenar por data
           <select value={sortDirection} onChange={event => setSortDirection(event.target.value as SortDirection)}>
             <option value="asc">Mais próximas primeiro</option>
             <option value="desc">Mais distantes primeiro</option>
           </select>
-        </label>}
+          </label>}
+        </div>
       </div>
 
       {error && <div className="feedback error" role="alert">{error}</div>}

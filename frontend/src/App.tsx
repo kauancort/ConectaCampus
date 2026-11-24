@@ -248,6 +248,7 @@ export default function App() {
           <h1>{page === 'catalogo' ? 'Aulas e palestras' : page === 'detalhe' ? 'Detalhes da atividade' : page === 'assentos' ? 'Escolha seu assento' : page === 'inscricoes' ? 'Minhas inscrições' : 'Acesse sua conta'}</h1>
           <p className="subtitle">{page === 'assentos' ? 'A seleção só é confirmada depois da inscrição.' : 'Encontre atividades acadêmicas e participe.'}</p>
         </div>
+        {student?.accountType === 'professor' && page !== 'conta' && <Link className="button primary launch-activity" to="/professor/atividades/nova">Lançar aula</Link>}
       </div>
 
       {error && <div className="feedback error" role="alert">{error}</div>}
