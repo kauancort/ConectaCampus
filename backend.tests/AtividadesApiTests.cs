@@ -125,12 +125,40 @@ public sealed class AtividadesApiTests(WebApplicationFactory<Program> factory) :
         }
     }
 
-    private static object CreateRequest(string tipoSala)
+    [Theory]
+    [InlineData("teste de horário")]
+    [InlineData("%_\\")]
+    public async Task Busca_por_tema_ignora_caixa_e_trata_curingas_como_texto(string filtro)
+    {
+        var authenticated = await CreateAuthenticatedClientAsync();
+        try
+        {
+            using var response = await authenticated.Client.PostAsJsonAsync("/api/atividades",
+                CreateRequest("DESKTOP", "Teste de horário %_\\"));
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+            using var created = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var id = created.RootElement.GetProperty("id").GetGuid();
+
+            using var filtered = await authenticated.Client.GetAsync($"/api/atividades?tema={Uri.EscapeDataString(filtro)}");
+            Assert.Equal(HttpStatusCode.OK, filtered.StatusCode);
+            using var result = JsonDocument.Parse(await filtered.Content.ReadAsStringAsync());
+            Assert.Contains(result.RootElement.EnumerateArray(), item => item.GetProperty("id").GetGuid() == id);
+            Assert.All(result.RootElement.EnumerateArray(), item =>
+                Assert.Contains(filtro, item.GetProperty("tema").GetString()!, StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            await DeleteStudentAsync(authenticated.Email);
+            authenticated.Client.Dispose();
+        }
+    }
+
+    private static object CreateRequest(string tipoSala, string tema = "Teste de horário")
     {
         var inicio = DateTimeOffset.UtcNow.AddDays(60).AddMinutes(Random.Shared.Next(1, 10_000));
         return new
         {
-            tema = "Teste de horário",
+            tema,
             descricao = "Atividade usada na validação de reserva de sala.",
             modalidade = "AULA",
             tipoSala,
