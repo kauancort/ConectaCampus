@@ -6,8 +6,8 @@ using Xunit;
 
 namespace AprendizagemColaborativa.Api.Tests;
 
+[Collection(ApiIntegrationCollection.Name)]
 public sealed class PostgreSqlDatabaseTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
 {
     [Fact]
     public async Task Inicializacao_aplica_migration_e_reexecucao_preserva_seed()
@@ -17,8 +17,9 @@ public sealed class PostgreSqlDatabaseTests(WebApplicationFactory<Program> facto
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
         Assert.True((await client.GetAsync("/health")).IsSuccessStatusCode);
-        var migration = Assert.Single(await db.Database.GetAppliedMigrationsAsync());
-        Assert.EndsWith("_InitialPostgreSql", migration);
+        var migrations = (await db.Database.GetAppliedMigrationsAsync()).ToList();
+        Assert.Contains(migrations, migration => migration.EndsWith("_InitialPostgreSql", StringComparison.Ordinal));
+        Assert.Contains(migrations, migration => migration.EndsWith("_AddAccountTypes", StringComparison.Ordinal));
         Assert.Empty(await db.Database.GetPendingMigrationsAsync());
 
         await db.Database.MigrateAsync();

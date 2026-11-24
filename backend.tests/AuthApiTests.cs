@@ -1,16 +1,20 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using AprendizagemColaborativa.Api.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 using Xunit;
 
 namespace AprendizagemColaborativa.Api.Tests;
 
-public sealed class AuthApiTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+[Collection(ApiIntegrationCollection.Name)]
+public sealed class AuthApiTests(WebApplicationFactory<Program> factory)
 {
     private readonly HttpClient _client = factory.CreateClient();
 
@@ -27,6 +31,7 @@ public sealed class AuthApiTests(WebApplicationFactory<Program> factory) : IClas
             using var json = JsonDocument.Parse(body);
             Assert.Equal(email, json.RootElement.GetProperty("email").GetString());
             Assert.Equal("Ada Aluna", json.RootElement.GetProperty("name").GetString());
+            Assert.Equal("aluno", json.RootElement.GetProperty("accountType").GetString());
         }
         finally
         {
@@ -106,6 +111,159 @@ public sealed class AuthApiTests(WebApplicationFactory<Program> factory) : IClas
         _client.DefaultRequestHeaders.Authorization = null;
         using var response = await _client.GetAsync("/api/auth/me");
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("aluno")]
+    [InlineData("professor")]
+    public async Task Cadastro_e_login_preservam_tipo_de_conta_no_perfil_e_token(string accountType)
+    {
+        var email = NewEmail();
+        try
+        {
+            using var register = await _client.PostAsJsonAsync("/api/auth/register", new
+            {
+                name = "Conta de teste", email, course = "DSM", password = TestPassword, accountType
+            });
+            Assert.Equal(HttpStatusCode.Created, register.StatusCode);
+            using var registration = JsonDocument.Parse(await register.Content.ReadAsStringAsync());
+            Assert.Equal(accountType, registration.RootElement.GetProperty("accountType").GetString());
+
+            using var login = await _client.PostAsJsonAsync("/api/auth/login", new { email, password = TestPassword });
+            Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+            using var body = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
+            Assert.Equal(accountType, body.RootElement.GetProperty("student").GetProperty("accountType").GetString());
+            var token = body.RootElement.GetProperty("accessToken").GetString()!;
+            Assert.Equal(accountType, new JwtSecurityTokenHandler().ReadJwtToken(token).Claims.Single(claim => claim.Type == "account_type").Value);
+
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            using var me = await _client.GetAsync("/api/auth/me");
+            Assert.Equal(HttpStatusCode.OK, me.StatusCode);
+            using var profile = JsonDocument.Parse(await me.Content.ReadAsStringAsync());
+            Assert.Equal(accountType, profile.RootElement.GetProperty("accountType").GetString());
+
+            using var create = await _client.PostAsJsonAsync("/api/atividades", new { });
+            Assert.Equal(accountType == "professor" ? HttpStatusCode.BadRequest : HttpStatusCode.Forbidden, create.StatusCode);
+            using var activities = await _client.GetAsync("/api/atividades/minhas");
+            Assert.Equal(accountType == "professor" ? HttpStatusCode.OK : HttpStatusCode.Forbidden, activities.StatusCode);
+        }
+        finally
+        {
+            _client.DefaultRequestHeaders.Authorization = null;
+            await DeleteStudentAsync(email);
+        }
+    }
+
+    [Theory]
+    [InlineData("admin")]
+    [InlineData("")]
+    [InlineData("responsavel")]
+    public async Task Cadastro_rejeita_tipo_de_conta_invalido(string accountType)
+    {
+        var email = NewEmail();
+        try
+        {
+            using var response = await _client.PostAsJsonAsync("/api/auth/register", new
+            {
+                name = "Conta de teste", email, course = "DSM", password = TestPassword, accountType
+            });
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            using var scope = factory.Services.CreateScope();
+            Assert.Null(await scope.ServiceProvider.GetRequiredService<UserManager<Aluno>>().FindByEmailAsync(email));
+        }
+        finally
+        {
+            await DeleteStudentAsync(email);
+        }
+    }
+
+    [Theory]
+    [InlineData("POST", "/api/atividades")]
+    [InlineData("GET", "/api/atividades/minhas")]
+    public async Task Rotas_de_professor_sem_token_retornam_401(string method, string route)
+    {
+        using var request = new HttpRequestMessage(new HttpMethod(method), route);
+        if (method == "POST") request.Content = JsonContent.Create(new { });
+        using var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Login_nao_promove_aluno_com_perfil_enviado_no_corpo()
+    {
+        var email = NewEmail();
+        try
+        {
+            using var register = await _client.PostAsJsonAsync("/api/auth/register", ValidRegistration(email));
+            Assert.Equal(HttpStatusCode.Created, register.StatusCode);
+            using var login = await _client.PostAsJsonAsync("/api/auth/login", new
+            {
+                email, password = TestPassword, accountType = "professor"
+            });
+            Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+            using var body = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
+            Assert.Equal("aluno", body.RootElement.GetProperty("student").GetProperty("accountType").GetString());
+            var token = body.RootElement.GetProperty("accessToken").GetString();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            using var create = await _client.PostAsJsonAsync("/api/atividades", new { accountType = "professor" });
+            Assert.Equal(HttpStatusCode.Forbidden, create.StatusCode);
+        }
+        finally
+        {
+            _client.DefaultRequestHeaders.Authorization = null;
+            await DeleteStudentAsync(email);
+        }
+    }
+
+    [Fact]
+    public async Task Cadastro_duplicado_com_outro_perfil_nao_altera_conta_existente()
+    {
+        var email = NewEmail();
+        try
+        {
+            using var register = await _client.PostAsJsonAsync("/api/auth/register", ValidRegistration(email));
+            Assert.Equal(HttpStatusCode.Created, register.StatusCode);
+            using var duplicate = await _client.PostAsJsonAsync("/api/auth/register", new
+            {
+                name = "Outra pessoa", email, course = "Outro curso", password = TestPassword, accountType = "professor"
+            });
+            Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+            using var scope = factory.Services.CreateScope();
+            var student = await scope.ServiceProvider.GetRequiredService<UserManager<Aluno>>().FindByEmailAsync(email);
+            Assert.NotNull(student);
+            Assert.Equal("aluno", student.TipoConta);
+            Assert.Equal("Ada Aluna", student.Nome);
+        }
+        finally
+        {
+            await DeleteStudentAsync(email);
+        }
+    }
+
+    [Fact]
+    public async Task Alterar_claim_de_aluno_para_professor_invalida_token()
+    {
+        var email = NewEmail();
+        try
+        {
+            using var register = await _client.PostAsJsonAsync("/api/auth/register", ValidRegistration(email));
+            Assert.Equal(HttpStatusCode.Created, register.StatusCode);
+            using var login = await _client.PostAsJsonAsync("/api/auth/login", new { email, password = TestPassword });
+            Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+            using var body = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
+            var parts = body.RootElement.GetProperty("accessToken").GetString()!.Split('.');
+            var payload = JsonNode.Parse(Base64UrlEncoder.Decode(parts[1]))!;
+            payload["account_type"] = "professor";
+            var forgedToken = $"{parts[0]}.{Base64UrlEncoder.Encode(payload.ToJsonString())}.{parts[2]}";
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", forgedToken);
+            using var activities = await _client.GetAsync("/api/atividades/minhas");
+            Assert.Equal(HttpStatusCode.Unauthorized, activities.StatusCode);
+        }
+        finally
+        {
+            _client.DefaultRequestHeaders.Authorization = null;
+            await DeleteStudentAsync(email);
+        }
     }
 
     private async Task DeleteStudentAsync(string email)

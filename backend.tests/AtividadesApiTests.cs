@@ -12,7 +12,8 @@ using Xunit;
 
 namespace AprendizagemColaborativa.Api.Tests;
 
-public sealed class AtividadesApiTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+[Collection(ApiIntegrationCollection.Name)]
+public sealed class AtividadesApiTests(WebApplicationFactory<Program> factory)
 {
     [Fact]
     public async Task Criar_atividade_retorna_sala_e_aparece_nas_listagens()
@@ -176,6 +177,7 @@ public sealed class AtividadesApiTests(WebApplicationFactory<Program> factory) :
             name = "Leonardo Responsável",
             email,
             course = "Desenvolvimento de Software Multiplataforma",
+            accountType = "professor",
             password = "Fatec!Teste2026"
         };
 
