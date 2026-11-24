@@ -188,3 +188,5 @@ O frontend não foi alterado nesta migração. Teste interativo completo no nave
 ## Licença
 
 Projeto acadêmico desenvolvido para fins educacionais.
+
+<!-- deploy vercel -->
