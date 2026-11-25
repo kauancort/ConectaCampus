@@ -114,7 +114,6 @@ textarea { resize: vertical; }
 .feedback.error { color: #8a2727; background: #fff0ed; border: 1px solid #efc9c2; }
 .feedback.success { color: #15573c; background: #e9f5ec; border: 1px solid #cce4d3; }
 .loading { color: #587069; }
-footer { padding: 22px; text-align: center; color: #6d8179; background: #fff; border-top: 1px solid #dce5e0; font-size: .88rem; }
 
 /* Uma linguagem visual discreta, inspirada em materiais de sala de aula. */
 :root { background: #f5f3ee; color: #243632; }
@@ -251,16 +250,13 @@ label { color: #405b4e; font-size: .8rem; }
 .landing-steps-grid article > h3:first-child { margin-top: 0; }
 .landing-steps-grid p { max-width: 290px; margin: 0; color: #6a7e70; font-size: .86rem; line-height: 1.7; }
 .landing-steps-grid article > b { align-self: flex-end; margin-top: auto; color: #b87659; font-size: 1.3rem; font-weight: 400; }
-.landing-invitation { display: flex; justify-content: space-between; gap: 35px; align-items: center; padding: clamp(36px, 5vw, 65px); background: #244f40; color: #e7f0e2; }
-.landing-invitation .eyebrow { color: #dca082; }
-.landing-invitation h2 { max-width: 650px; margin: 18px 0; color: #f5f6ea; font: 400 clamp(2.5rem, 4vw, 4rem)/1.08 Georgia, serif; letter-spacing: -.05em; }
-.landing-invitation h2 em { color: #e7ae8c; font-weight: 400; }
-.landing-invitation p:not(.eyebrow) { color: #c8dbca; line-height: 1.6; font-size: .9rem; }
-.landing-invitation .landing-actions { margin-top: 27px; }
+.landing-invitation { display: grid; place-items: center; min-height: 260px; padding: clamp(36px, 5vw, 65px); background: #244f40; color: #e7f0e2; }
+.landing-invitation .landing-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: min(100%, 420px); }
+.landing-invitation .button { justify-content: center; height: 100%; }
 .landing-invitation .button.primary { background: #f6f5e8; color: #234f42; }
 .landing-invitation .button.primary:hover:not(:disabled) { background: #e2ecdc; }
-.landing-login { padding: 10px 0; border: 0; border-bottom: 1px solid #9eb7a1; color: #e4efe0; background: transparent; font-size: .83rem; font-weight: 700; }
-.invitation-art { display: grid; flex: 0 0 180px; height: 180px; place-items: center; border: 1px solid #6a8e77; border-radius: 50%; color: #df9c79; font-size: 6rem; }
+.landing-invitation .button.secondary { background: transparent; border-color: #9eb7a1; color: #e4efe0; }
+.landing-invitation .button.secondary:hover { background: #315f4e; }
 .catalog-section-heading { display: flex; justify-content: space-between; align-items: end; gap: 20px; }
 .catalog-section-heading .eyebrow { margin-bottom: 13px; }
 .catalog-section-heading .eyebrow span { color: #a7b6aa; margin-left: 5px; }
@@ -399,7 +395,6 @@ label { color: #405b4e; font-size: .8rem; }
 .seat.mine, .seat-sample.mine { background: #305c91; color: #fff; opacity: 1; }
 .seat.occupied, .seat-sample.occupied { background: #c2cbc2; color: #fff; }
 .seat-map { background: #f6f7f0; border-color: #e0e6dc; }
-footer { background: #eaf0e5; border-color: #d9e3d5; color: #728878; font-size: .75rem; letter-spacing: .02em; }
 
 /* Áreas internas: os mesmos materiais, cores e hierarquia da agenda. */
 .workspace { padding-top: 28px; }
@@ -568,7 +563,6 @@ footer { background: #eaf0e5; border-color: #d9e3d5; color: #728878; font-size: 
   .landing-steps-grid article:last-child { border-bottom: 0; }
   .landing-steps-grid h3 { margin-top: 24px; }
   .landing-invitation { padding: 34px 26px; }
-  .invitation-art { display: none; }
   .landing-hero-note { margin-top: 30px; }
 }
 

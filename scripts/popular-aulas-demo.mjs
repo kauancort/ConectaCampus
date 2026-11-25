@@ -5,7 +5,7 @@ if (!['127.0.0.1', 'localhost', '[::1]'].includes(base.hostname) || !['http:', '
 }
 const studentEmail = process.env.DEMO_STUDENT_EMAIL || 'aluno@conectacampus.local'
 const teacherEmail = process.env.DEMO_TEACHER_EMAIL || 'professor@conectacampus.local'
-const password = process.env.DEMO_PASSWORD || 'Campus@123'
+const password = process.env.DEMO_PASSWORD || 'Campus123@'
 const marker = '[Demonstração ConectaCampus]'
 
 const lessons = [

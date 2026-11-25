@@ -1,4 +1,3 @@
-import SiteFooter from './SiteFooter'
 import Pagination, { usePagination } from './Pagination'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -329,6 +328,5 @@ export default function App() {
         <AuthForm key={authMode} initialMode={authMode} initialMessage={error} onSignIn={result => { const resumeSeat = Boolean(returnToSeat && selected); signIn(result.accessToken, result.student); setPage(resumeSeat ? 'assentos' : 'catalogo'); if (!resumeSeat && location.pathname !== '/') navigate('/', { replace: true }); setReturnToSeat(false); setError(''); setNotice(`Bem-vindo(a), ${result.student.name}.`) }} />
       </section></div>}
     </main>
-    <SiteFooter />
   </div>
 }

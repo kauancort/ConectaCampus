@@ -118,18 +118,22 @@ A resposta esperada é:
 
 Depois, abra http://127.0.0.1:5173 no navegador.
 
-### Contas de demonstração
+### Contas iniciais de aluno e professor
 
-Com `DEMO_ACCOUNTS_ENABLED=true` no `.env` (como no exemplo), a API cria estas contas na primeira inicialização:
+A API cria estas duas contas na primeira inicialização em produção. No ambiente de desenvolvimento, elas são criadas com `DEMO_ACCOUNTS_ENABLED=true`:
 
 | Perfil | E-mail | Senha |
 | --- | --- | --- |
-| Aluno | `aluno@conectacampus.local` | `Campus@123` |
-| Professor | `professor@conectacampus.local` | `Campus@123` |
+| Aluno | `aluno@conectacampus.local` | `Campus123@` |
+| Professor | `professor@conectacampus.local` | `Campus123@` |
 
-Use essas credenciais apenas no ambiente local: a senha é pública. Para desativar a criação automática, defina `DEMO_ACCOUNTS_ENABLED=false` e reinicie a API; a desativação não remove contas já criadas. A configuração é desativada por padrão quando a variável não está definida e não deve ser habilitada em produção.
+O aluno pode consultar atividades e se inscrever. O professor já possui a permissão de supervisão e aprovação de propostas. Os e-mails são identificadores de login; não é necessário ter uma caixa de e-mail nesses endereços.
 
-A inicialização não altera senha, perfil ou outros dados de uma conta que já use esses e-mails. Nesse caso, as credenciais da tabela só funcionarão se corresponderem à conta existente.
+A criação não duplica contas ao reiniciar e preserva dados, permissões e senhas que tenham sido alterados. Contas iniciais intactas que ainda usem a senha padrão antiga recebem a senha da tabela. Outros usuários não são alterados.
+
+No Render, configure `ASPNETCORE_ENVIRONMENT=Production` e `DEMO_ACCOUNTS_ENABLED=false`. A API aplica as migrations e cria apenas essas duas contas no banco indicado por `ConnectionStrings__DefaultConnection`, que deve ser a conexão PostgreSQL do Supabase. A senha é armazenada com o hash do ASP.NET Identity. A Vercel acessa as mesmas contas pela API, sem precisar copiar usuários para o frontend nem para o Supabase Auth.
+
+Mantenha `VITE_API_URL` na Vercel apontando para a URL pública da API no Render e `Cors__AllowedOrigins__0` no Render com a URL do frontend na Vercel. As contas ficam disponíveis depois que o backend atualizado iniciar sobre o banco de produção.
 
 ### Dados para apresentação
 

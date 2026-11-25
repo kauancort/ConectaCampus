@@ -1,4 +1,3 @@
-import SiteFooter from '../SiteFooter'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth'
@@ -287,6 +286,5 @@ export default function MyActivitiesPage() {
       </>}
     </main>
 
-    <SiteFooter />
   </div>
 }

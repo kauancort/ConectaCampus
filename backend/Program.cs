@@ -37,7 +37,8 @@ if (jwtExpirationMinutes <= 0)
 var jwtKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSigningKey));
 
 builder.Services.AddIdentityCore<Aluno>(options => options.User.RequireUniqueEmail = true)
-    .AddEntityFrameworkStores<ApplicationDbContext>();
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -130,9 +131,13 @@ await using (var scope = app.Services.CreateAsyncScope())
         Console.WriteLine("Acesso de professor concedido.");
         return;
     }
-    if (builder.Configuration.GetValue<bool>("DEMO_ACCOUNTS_ENABLED"))
+    var demoDataEnabled = builder.Configuration.GetValue<bool>("DEMO_ACCOUNTS_ENABLED");
+    if (app.Environment.IsProduction() || demoDataEnabled)
     {
         await DemoAccountSeeder.SeedAsync(scope.ServiceProvider.GetRequiredService<UserManager<Aluno>>(), app.Logger);
+    }
+    if (demoDataEnabled)
+    {
         await CampusSeed.SeedAsync(database, scope.ServiceProvider.GetRequiredService<UserManager<Aluno>>(), app.Logger);
     }
 }

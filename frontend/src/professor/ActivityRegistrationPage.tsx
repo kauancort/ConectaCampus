@@ -1,4 +1,3 @@
-import SiteFooter from '../SiteFooter'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth'
@@ -367,6 +366,5 @@ export default function ActivityRegistrationPage() {
       </section>
     </main>
 
-    <SiteFooter />
   </div>
 }
