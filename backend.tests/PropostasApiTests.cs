@@ -41,7 +41,27 @@ public sealed class PropostasApiTests(WebApplicationFactory<Program> factory) : 
         {
             var start = DateTimeOffset.UtcNow.AddDays(900 + Random.Shared.Next(100));
             var request = new { titulo = "Oficina de dados", tema = "Dados", descricao = "Exercícios práticos", tipoSala = "DESKTOP", numeroSala = "101", inicio = start.ToString("O"), fim = start.AddHours(1).ToString("O") };
-            Assert.Equal(HttpStatusCode.Forbidden, (await teacher.PostAsJsonAsync("/api/propostas", request)).StatusCode);
+            var teacherRequest = new { titulo = "Aula do professor", tema = "Dados", descricao = "Aula ministrada pelo professor", tipoSala = "DESKTOP", numeroSala = "104", inicio = start.AddDays(2).ToString("O"), fim = start.AddDays(2).AddHours(1).ToString("O") };
+            using var teacherCreated = await teacher.PostAsJsonAsync("/api/propostas", teacherRequest);
+            Assert.Equal(HttpStatusCode.Created, teacherCreated.StatusCode);
+            using var teacherJson = JsonDocument.Parse(await teacherCreated.Content.ReadAsStringAsync());
+            Assert.Equal("aprovada", teacherJson.RootElement.GetProperty("status").GetString());
+            var teacherActivityId = teacherJson.RootElement.GetProperty("atividadeId").GetGuid();
+            using var teacherCatalog = JsonDocument.Parse(await student.GetStringAsync("/api/atividades?tema=Dados"));
+            Assert.Contains(teacherCatalog.RootElement.EnumerateArray(), x => x.GetProperty("id").GetGuid() == teacherActivityId);
+            Assert.Equal(HttpStatusCode.Conflict, (await teacher.PostAsJsonAsync("/api/propostas", teacherRequest)).StatusCode);
+            using var ownClasses = JsonDocument.Parse(await teacher.GetStringAsync("/api/propostas/minhas"));
+            Assert.Single(ownClasses.RootElement.EnumerateArray());
+            using var teacherMap = JsonDocument.Parse(await student.GetStringAsync($"/api/atividades/{teacherActivityId}/assentos"));
+            var teacherSeat = teacherMap.RootElement.GetProperty("assentos")[0].GetProperty("id").GetGuid();
+            Assert.Equal(HttpStatusCode.Created, (await unapproved.PostAsJsonAsync($"/api/atividades/{teacherActivityId}/inscricoes", new { assentoId = teacherSeat })).StatusCode);
+            using var teacherParticipants = JsonDocument.Parse(await teacher.GetStringAsync($"/api/atividades/{teacherActivityId}/inscricoes"));
+            var attendeeId = Assert.Single(teacherParticipants.RootElement.EnumerateArray()).GetProperty("alunoId").GetString();
+            Assert.Equal(HttpStatusCode.NoContent, (await teacher.PutAsJsonAsync($"/api/atividades/{teacherActivityId}/inscricoes/{attendeeId}/presenca", new { presente = true })).StatusCode);
+            var teacherEdit = new { titulo = "Aula do professor atualizada", tema = "Dados", descricao = "Conteúdo atualizado" };
+            Assert.Equal(HttpStatusCode.Forbidden, (await other.PutAsJsonAsync($"/api/atividades/{teacherActivityId}/conteudo", teacherEdit)).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await teacher.PutAsJsonAsync($"/api/atividades/{teacherActivityId}/conteudo", teacherEdit)).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await teacher.PostAsync($"/api/atividades/{teacherActivityId}/cancelar", null)).StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, (await unapproved.PostAsJsonAsync("/api/propostas", request)).StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, (await student.PostAsJsonAsync("/api/atividades", request)).StatusCode);
             using var invalid = await student.PostAsJsonAsync("/api/propostas", new { titulo = request.titulo, tema = request.tema, descricao = request.descricao, tipoSala = request.tipoSala, numeroSala = "A101", inicio = request.inicio, fim = request.fim });
@@ -134,7 +154,7 @@ public sealed class PropostasApiTests(WebApplicationFactory<Program> factory) : 
             db.PropostasAula.RemoveRange(proposals); db.Notificacoes.RemoveRange(await db.Notificacoes.Where(x => users.Contains(x.UsuarioId)).ToListAsync()); await db.SaveChangesAsync();
             db.Inscricoes.RemoveRange(await db.Inscricoes.Where(x => activities.Contains(x.AtividadeId)).ToListAsync()); await db.SaveChangesAsync();
             db.Atividades.RemoveRange(await db.Atividades.Where(x => activities.Contains(x.Id)).ToListAsync()); await db.SaveChangesAsync();
-            var rooms = await db.Salas.Where(x => x.Numero == "101" || x.Numero == "102" || x.Numero == "103").ToListAsync();
+            var rooms = await db.Salas.Where(x => x.Numero == "101" || x.Numero == "102" || x.Numero == "103" || x.Numero == "104").ToListAsync();
             var roomIds = rooms.Select(x => x.Id).ToArray();
             db.Assentos.RemoveRange(await db.Assentos.Where(x => roomIds.Contains(x.SalaId)).ToListAsync());
             db.Salas.RemoveRange(rooms); await db.SaveChangesAsync();

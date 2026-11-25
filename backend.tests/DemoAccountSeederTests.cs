@@ -32,7 +32,9 @@ public sealed class DemoAccountSeederTests(WebApplicationFactory<Program> factor
             student = (await users.FindByEmailAsync(DemoAccountSeeder.StudentEmail))!;
             var teacher = (await users.FindByEmailAsync(DemoAccountSeeder.TeacherEmail))!;
             Assert.True(teacher.Professor);
+            Assert.True(teacher.PodeMinistrar);
             Assert.False(student.Professor);
+            Assert.False(student.PodeMinistrar);
             Assert.Equal(TiposConta.Professor, teacher.TipoConta);
             Assert.Equal(TiposConta.Aluno, student.TipoConta);
             Assert.True(await users.CheckPasswordAsync(teacher, DemoAccountSeeder.Password));
@@ -43,6 +45,12 @@ public sealed class DemoAccountSeederTests(WebApplicationFactory<Program> factor
             using var login = await client.PostAsJsonAsync("/api/auth/login", new { email = DemoAccountSeeder.TeacherEmail, password = DemoAccountSeeder.Password });
             Assert.Equal(HttpStatusCode.OK, login.StatusCode);
             Assert.True((await login.Content.ReadFromJsonAsync<LoginResponse>())!.Student.Professor);
+            teacher.PodeMinistrar = false;
+            Assert.True((await users.UpdateAsync(teacher)).Succeeded);
+            await DemoAccountSeeder.SeedAsync(users, NullLogger.Instance);
+            var updatedTeacher = (await users.FindByEmailAsync(DemoAccountSeeder.TeacherEmail))!;
+            Assert.Equal(teacher.Id, updatedTeacher.Id);
+            Assert.True(updatedTeacher.PodeMinistrar);
             teacher.Professor = false;
             Assert.True((await users.UpdateAsync(teacher)).Succeeded);
             student.Nome = "Conta existente";
@@ -77,6 +85,7 @@ public sealed class DemoAccountSeederTests(WebApplicationFactory<Program> factor
             var updated = (await users.FindByEmailAsync(email))!;
             Assert.Equal(account.Id, updated.Id);
             Assert.Equal(professor, updated.Professor);
+            Assert.Equal(professor, updated.PodeMinistrar);
             Assert.Equal(professor ? TiposConta.Professor : TiposConta.Aluno, updated.TipoConta);
             Assert.True(await users.CheckPasswordAsync(updated, "Campus123@"));
             Assert.False(await users.CheckPasswordAsync(updated, "Campus@123"));
@@ -120,6 +129,7 @@ public sealed class DemoAccountSeederTests(WebApplicationFactory<Program> factor
                 Assert.Equal(HttpStatusCode.OK, login.StatusCode);
                 var session = (await login.Content.ReadFromJsonAsync<LoginResponse>())!;
                 Assert.Equal(professor, session.Student.Professor);
+                Assert.Equal(professor, session.Student.PodeMinistrar);
                 Assert.Equal(professor ? TiposConta.Professor : TiposConta.Aluno, session.Student.AccountType);
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session.AccessToken);
                 Assert.Equal(professor ? HttpStatusCode.OK : HttpStatusCode.Forbidden, (await client.GetAsync("/api/atividades/minhas")).StatusCode);

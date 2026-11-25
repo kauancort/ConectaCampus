@@ -21,6 +21,13 @@ public static class DemoAccountSeeder
     {
         if (await users.FindByEmailAsync(email) is { } existing)
         {
+            if (professor && existing.Professor && !existing.PodeMinistrar)
+            {
+                existing.PodeMinistrar = true;
+                var permission = await users.UpdateAsync(existing);
+                if (!permission.Succeeded)
+                    throw new InvalidOperationException($"Não foi possível habilitar a conta inicial {email} para ministrar aulas.");
+            }
             // Atualiza somente a senha padrão antiga de uma conta inicial intacta.
             // Senhas e permissões alteradas pelo usuário são preservadas.
             if (existing.Nome == name && existing.Professor == professor &&
@@ -38,11 +45,11 @@ public static class DemoAccountSeeder
                 logger.LogInformation("Senha padrão antiga da conta inicial {Email} atualizada.", email);
                 return;
             }
-            logger.LogInformation("Conta de demonstração {Email} já existe; nenhum dado foi alterado.", email);
+            logger.LogInformation("Conta inicial {Email} já existe.", email);
             return;
         }
 
-        var account = new Aluno { UserName = email, Email = email, Nome = name, Curso = "Desenvolvimento de Software Multiplataforma", Professor = professor, TipoConta = professor ? TiposConta.Professor : TiposConta.Aluno };
+        var account = new Aluno { UserName = email, Email = email, Nome = name, Curso = "Desenvolvimento de Software Multiplataforma", Professor = professor, PodeMinistrar = professor, TipoConta = professor ? TiposConta.Professor : TiposConta.Aluno };
         var result = await users.CreateAsync(account, Password);
         if (!result.Succeeded)
         {

@@ -96,3 +96,33 @@ it('envia o número da sala na proposta', async () => {
   const call = fetchMock.mock.calls.find(([url]) => url === '/api/propostas')
   expect(JSON.parse(call?.[1]?.body as string).numeroSala).toBe('101')
 })
+
+it('permite ao professor publicar sua aula e acessá-la como ministrante', async () => {
+  const profile = { id: 'prof', name: 'Professor', professor: true, podeMinistrar: false }
+  loggedIn(profile)
+  let published = false
+  const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+    if (url === '/api/auth/me') return Promise.resolve(Response.json(profile))
+    if (url === '/api/propostas/minhas') return Promise.resolve(Response.json(published ? [{ ...base, titulo: 'Minha aula', status: 'aprovada', atividadeId: 'a1' }] : []))
+    if (url === '/api/propostas' && init?.method === 'POST') { published = true; return Promise.resolve(Response.json({ id: 'p1', status: 'aprovada', atividadeId: 'a1' }, { status: 201 })) }
+    return Promise.resolve(Response.json([]))
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  render(<MemoryRouter initialEntries={['/professor/atividades/nova']}><AuthProvider><Routes>
+    <Route path="/professor/atividades/nova" element={<StudentProposalsPage />} />
+    <Route path="/ministrar" element={<StudentProposalsPage />} />
+  </Routes></AuthProvider></MemoryRouter>)
+  expect(screen.getByRole('heading', { name: 'Publicar uma aula.' })).toBeTruthy()
+  fireEvent.change(screen.getByLabelText('Título da aula'), { target: { value: 'Minha aula' } })
+  fireEvent.change(screen.getByLabelText('Tema'), { target: { value: 'Dados' } })
+  fireEvent.change(screen.getByLabelText('Descrição'), { target: { value: 'Aula prática' } })
+  fireEvent.change(screen.getByLabelText('Tipo de sala'), { target: { value: 'DESKTOP' } })
+  fireEvent.change(screen.getByLabelText(/Número da sala/), { target: { value: '104' } })
+  fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2099-01-01' } })
+  fireEvent.change(screen.getByLabelText('Horário de início'), { target: { value: '10:00' } })
+  fireEvent.change(screen.getByLabelText('Horário de término'), { target: { value: '12:00' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Publicar aula' }))
+  expect(await screen.findByText('Aula publicada. Os alunos já podem se inscrever.')).toBeTruthy()
+  expect(await screen.findByRole('link', { name: 'Abrir aula' })).toHaveProperty('pathname', '/ministrar/aulas/a1')
+  expect(screen.queryByText('Esta área é exclusiva para alunos autorizados a ministrar.')).toBeNull()
+})

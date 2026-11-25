@@ -127,9 +127,9 @@ A API cria estas duas contas na primeira inicialização em produção. No ambie
 | Aluno | `aluno@conectacampus.local` | `Campus123@` |
 | Professor | `professor@conectacampus.local` | `Campus123@` |
 
-O aluno pode consultar atividades e se inscrever. O professor já possui a permissão de supervisão e aprovação de propostas. Os e-mails são identificadores de login; não é necessário ter uma caixa de e-mail nesses endereços.
+O aluno pode consultar atividades e se inscrever. O professor pode publicar e ministrar suas próprias aulas, editar o conteúdo, acompanhar participantes, registrar presença e cancelar as aulas sob sua responsabilidade, além de supervisionar e aprovar propostas e solicitações de acesso. Em **Minha área → Minhas aulas**, o professor acessa suas aulas e **Publicar uma aula**; suas publicações reservam a sala imediatamente, sem aguardar outra aprovação. Os e-mails são identificadores de login; não é necessário ter uma caixa de e-mail nesses endereços.
 
-A criação não duplica contas ao reiniciar e preserva dados, permissões e senhas que tenham sido alterados. Contas iniciais intactas que ainda usem a senha padrão antiga recebem a senha da tabela. Outros usuários não são alterados.
+A criação não duplica contas ao reiniciar e preserva dados e senhas que tenham sido alterados. A conta inicial que já possui acesso de professor também recebe a permissão de ministrar aulas. Contas iniciais intactas que ainda usem a senha padrão antiga recebem a senha da tabela. Outros usuários não são alterados.
 
 No Render, configure `ASPNETCORE_ENVIRONMENT=Production` e `DEMO_ACCOUNTS_ENABLED=false`. A API aplica as migrations e cria apenas essas duas contas no banco indicado por `ConnectionStrings__DefaultConnection`, que deve ser a conexão PostgreSQL do Supabase. A senha é armazenada com o hash do ASP.NET Identity. A Vercel acessa as mesmas contas pela API, sem precisar copiar usuários para o frontend nem para o Supabase Auth.
 

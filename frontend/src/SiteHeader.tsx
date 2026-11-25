@@ -43,7 +43,7 @@ export default function SiteHeader({ active, onCatalog, onEnrollments, onLogin, 
         {menuOpen && <div className="area-dropdown" id="area-menu">
           <p>MINHA ÁREA</p>
           <Link to="/inscricoes" onClick={event => { setMenuOpen(false); local(onEnrollments)(event) }} aria-current={active === 'inscricoes' ? 'page' : undefined}>Minhas inscrições <span aria-hidden="true">↗</span></Link>
-          {student.podeMinistrar && !student.professor && <Link to="/ministrar" onClick={() => setMenuOpen(false)} aria-current={active === 'ministrar' ? 'page' : undefined}>Minhas aulas <span aria-hidden="true">↗</span></Link>}
+          {(student.podeMinistrar || student.professor) && <Link to="/ministrar" onClick={() => setMenuOpen(false)} aria-current={active === 'ministrar' ? 'page' : undefined}>Minhas aulas <span aria-hidden="true">↗</span></Link>}
           <Link to="/perfil" onClick={() => setMenuOpen(false)} aria-current={active === 'acesso' ? 'page' : undefined}>Meu perfil <span aria-hidden="true">↗</span></Link>
           {student.professor && <Link to="/solicitacoes" onClick={() => setMenuOpen(false)}>Solicitações de acesso <span aria-hidden="true">↗</span></Link>}
         </div>}

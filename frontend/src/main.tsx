@@ -20,7 +20,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/professor/aulas/:id" element={<ProtectedProfessor><SupervisedActivityPage /></ProtectedProfessor>} />
           <Route path="/professor/atividades" element={<ProtectedProfessor><TeacherProposalsPage /></ProtectedProfessor>} />
           <Route path="/professor/aulas-aprovadas" element={<ProtectedProfessor><TeacherProposalsPage /></ProtectedProfessor>} />
-          <Route path="/professor/atividades/nova" element={<ProtectedProfessor><TeacherProposalsPage /></ProtectedProfessor>} />
+          <Route path="/professor/atividades/nova" element={<ProtectedProfessor><StudentProposalsPage /></ProtectedProfessor>} />
           <Route path="/ministrar" element={<StudentProposalsPage />} />
           <Route path="/ministrar/aulas/:id" element={<SupervisedActivityPage instructor />} />
           <Route path="/ministrar/nova" element={<StudentProposalsPage />} />

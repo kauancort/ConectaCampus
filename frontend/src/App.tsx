@@ -270,7 +270,7 @@ export default function App() {
           <aside className="detail-aside"><h3>Informações do encontro<span>.</span></h3><div className="detail-grid">
             <span><b>Data e horário</b>{scheduleLabel(selected.inicio, selected.fim)}</span>
             <span><b>Sala</b>{selected.sala.nome}</span>
-            <span><b>Aluno ministrante</b>{selected.nomeMinistrante || selected.nomeProfessor || 'Não informado'}</span>
+            <span><b>Ministrante</b>{selected.nomeMinistrante || selected.nomeProfessor || 'Não informado'}</span>
             <span><b>Tipo de sala</b>{titleCase(selected.sala.tipo)}</span>
             <span><b>Capacidade</b>{selected.sala.capacidade} lugares</span>
           </div>
