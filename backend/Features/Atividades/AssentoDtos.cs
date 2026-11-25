@@ -13,4 +13,6 @@ public sealed record MapaAssentosResponse(
     SalaAtividadeResponse Sala,
     int CapacidadeTotal,
     int LugaresDisponiveis,
-    IReadOnlyList<AssentoResponse> Assentos);
+    IReadOnlyList<AssentoResponse> Assentos,
+    bool JaInscrito = false,
+    Guid? MeuAssentoId = null);

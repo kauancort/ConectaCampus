@@ -56,6 +56,10 @@ public sealed partial class AtividadeService(ApplicationDbContext db, AtividadeR
         {
             errors["fim"] = ["O horário de término deve ser posterior ao início."];
         }
+        if (inicioValido && inicio <= DateTimeOffset.UtcNow)
+        {
+            errors["inicio"] = ["A atividade deve começar no futuro."];
+        }
 
         return errors;
     }
@@ -63,7 +67,9 @@ public sealed partial class AtividadeService(ApplicationDbContext db, AtividadeR
     public async Task<CriarAtividadeResultado> CriarAsync(
         CriarAtividadeRequest request,
         string responsavelId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool dentroDeTransacao = false,
+        Guid? salaEspecificaId = null)
     {
         TryParseUtc(request.Inicio, out var inicio);
         TryParseUtc(request.Fim, out var fim);
@@ -72,18 +78,18 @@ public sealed partial class AtividadeService(ApplicationDbContext db, AtividadeR
 
         // O bloqueio das salas serializa as reservas; ReadCommitted enxerga a reserva
         // confirmada por outra transação enquanto esta aguardava o FOR UPDATE.
-        await using var transaction = await db.Database.BeginTransactionAsync(
+        await using var transaction = dentroDeTransacao ? null : await db.Database.BeginTransactionAsync(
             System.Data.IsolationLevel.ReadCommitted,
             cancellationToken);
 
         var responsavel = await repository.ObterResponsavelAsync(responsavelId, cancellationToken);
         if (responsavel is null)
         {
-            await transaction.RollbackAsync(cancellationToken);
+            if (transaction is not null) await transaction.RollbackAsync(cancellationToken);
             return CriarAtividadeResultado.ResponsavelAusente;
         }
 
-        var salas = await repository.ObterSalasDisponiveisComBloqueioAsync(tipoSala, cancellationToken);
+        var salas = await repository.ObterSalasDisponiveisComBloqueioAsync(tipoSala, cancellationToken, salaEspecificaId);
         foreach (var sala in salas)
         {
             var possuiConflito = await repository.ExisteConflitoDeHorarioAsync(
@@ -100,6 +106,7 @@ public sealed partial class AtividadeService(ApplicationDbContext db, AtividadeR
             {
                 Id = Guid.NewGuid(),
                 Tema = request.Tema!.Trim(),
+                Titulo = string.IsNullOrWhiteSpace(request.Titulo) ? request.Tema!.Trim() : request.Titulo.Trim(),
                 Descricao = request.Descricao!.Trim(),
                 Modalidade = modalidade,
                 SalaId = sala.Id,
@@ -120,11 +127,11 @@ public sealed partial class AtividadeService(ApplicationDbContext db, AtividadeR
 
             repository.Adicionar(atividade);
             await repository.SalvarAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+            if (transaction is not null) await transaction.CommitAsync(cancellationToken);
             return new(ToResponse(atividade));
         }
 
-        await transaction.RollbackAsync(cancellationToken);
+        if (transaction is not null) await transaction.RollbackAsync(cancellationToken);
         return CriarAtividadeResultado.SemSalaDisponivel;
     }
 
@@ -145,7 +152,11 @@ public sealed partial class AtividadeService(ApplicationDbContext db, AtividadeR
             DateOnly.FromDateTime(inicio.DateTime),
             inicio,
             ToUtcOffset(atividade.Fim.Value),
-            atividade.Status);
+            atividade.Status,
+            null,
+            atividade.NumeroDeVagas,
+            string.IsNullOrWhiteSpace(atividade.Titulo) ? atividade.Tema : atividade.Titulo,
+            atividade.Responsavel?.Nome);
     }
 
     private static string Normalize(string value) => value.Trim().ToUpperInvariant();

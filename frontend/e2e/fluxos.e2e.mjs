@@ -1,0 +1,210 @@
+import { test, expect } from '@playwright/test'
+import pg from 'pg'
+
+test.describe.configure({ mode: 'serial' })
+
+const api = process.env.E2E_API_URL || 'http://127.0.0.1:5077'
+const password = 'Fatec!Teste2026'
+const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+const teacherEmail = `prof-${unique}@example.test`
+const studentEmail = `aluno-${unique}@example.test`
+const teacherName = `Professor ${unique}`
+const studentName = `Aluno ${unique}`
+const theme = `Oficina ${unique}`
+
+test.beforeAll(async ({ request }) => {
+  const dbUrl = process.env.E2E_DATABASE_URL
+  if (!dbUrl || new URL(dbUrl).pathname !== '/conectacampus_e2e') throw new Error('Use E2E_DATABASE_URL apontando exclusivamente para o banco descartável conectacampus_e2e.')
+  const response = await request.post(`${api}/api/auth/register`, { data: { name: teacherName, email: teacherEmail, course: 'DSM', password } })
+  expect(response.status()).toBe(201)
+  const db = new pg.Client({ connectionString: dbUrl })
+  await db.connect()
+  try { expect((await db.query('UPDATE conectacampus."AspNetUsers" SET "Professor" = true WHERE "Email" = $1', [teacherEmail])).rowCount).toBe(1) }
+  finally { await db.end() }
+})
+
+async function login(page, email) {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Entrar', exact: true }).click()
+  await page.getByLabel('E-mail').fill(email)
+  await page.getByLabel('Senha', { exact: true }).fill(password)
+  await page.locator('button[type=submit]').getByText('Entrar').click()
+  await expect(page.getByText(/Bem-vindo/)).toBeVisible()
+}
+
+test('cadastro, login, solicitação e aprovação de acesso', async ({ browser }) => {
+  const studentContext = await browser.newContext()
+  const student = await studentContext.newPage()
+  await student.goto('/')
+  await expect(student.getByRole('heading', { name: /Todo mundo tem algo para ensinar/ })).toBeVisible()
+  await expect(student.getByLabel('Pesquisar por tema')).toHaveCount(0)
+  expect((await student.request.get(`${api}/api/atividades`)).status()).toBe(401)
+  expect((await student.request.get(`${api}/api/atividades/00000000-0000-0000-0000-000000000000/assentos`)).status()).toBe(401)
+  const favicon = await student.locator('link[rel="icon"]').getAttribute('href')
+  expect(favicon).toBe('/favicon.svg')
+  expect((await student.request.get(new URL(favicon, student.url()).toString())).status()).toBe(200)
+  await student.getByRole('link', { name: 'Entrar', exact: true }).click()
+  await student.getByRole('button', { name: 'Criar cadastro' }).click()
+  await student.getByLabel('Nome', { exact: true }).fill(studentName)
+  await student.getByLabel('Curso').fill('DSM')
+  await student.getByLabel('E-mail').fill(studentEmail)
+  await student.getByLabel('Senha', { exact: true }).fill(password)
+  await student.getByLabel('Confirmar senha').fill('Diferente!1')
+  await student.getByRole('button', { name: 'Criar conta' }).click()
+  await expect(student.getByText('As senhas não coincidem.')).toBeVisible()
+  await student.getByLabel('Confirmar senha').fill(password)
+  await student.getByRole('button', { name: 'Criar conta' }).click()
+  await expect(student.getByText('Cadastro realizado. Entre com seu e-mail e senha.')).toBeVisible()
+  await student.getByLabel('Senha', { exact: true }).fill(password)
+  await student.locator('button[type=submit]').getByText('Entrar').click()
+  await expect(student.getByText(/Bem-vindo/)).toBeVisible()
+  await student.goto('/professor/atividades')
+  await expect(student.getByText('Esta área é exclusiva para professores autorizados.')).toBeVisible()
+  await student.getByRole('link', { name: 'Solicitar acesso ou entrar' }).click()
+  await student.getByLabel('Justificativa').fill('Quero compartilhar meus conhecimentos com a turma.')
+  await student.getByRole('button', { name: 'Solicitar acesso' }).click()
+  await expect(student.getByText('Sua solicitação está aguardando avaliação.')).toBeVisible()
+  await student.getByRole('button', { name: 'Minha área' }).click()
+  await student.getByRole('link', { name: 'Minhas inscrições' }).click()
+  await expect(student.getByRole('heading', { name: 'Minhas inscrições' })).toBeVisible()
+  await student.getByRole('button', { name: 'Minha área' }).click()
+  await student.getByRole('link', { name: 'Meu perfil' }).click()
+  await expect(student.getByText('Sua solicitação está aguardando avaliação.')).toBeVisible()
+
+  const teacherContext = await browser.newContext()
+  const teacher = await teacherContext.newPage()
+  await login(teacher, teacherEmail)
+  await teacher.getByRole('button', { name: 'Minha área' }).click()
+  await teacher.getByRole('link', { name: 'Solicitações de acesso' }).click()
+  const request = teacher.locator('section').filter({ has: teacher.getByRole('heading', { name: 'Solicitações pendentes' }) }).locator('article').filter({ hasText: studentName })
+  await expect(request).toBeVisible()
+  await request.getByRole('button', { name: 'Aprovar' }).click()
+  await expect(request).toHaveCount(0)
+  await student.reload()
+  await expect(student.getByText(/Autorizado a ministrar/)).toBeVisible()
+  await student.getByRole('button', { name: 'Minha área' }).click()
+  await expect(student.getByRole('link', { name: 'Minhas aulas', exact: true })).toBeVisible()
+  await student.getByRole('button', { name: 'Minha área' }).click()
+  const bell = student.getByRole('button', { name: /Notificações, .* não lida/ })
+  await bell.click()
+  const panel = student.getByRole('region', { name: 'Notificações recentes' })
+  await expect(panel.getByText('Sua solicitação para ministrar atividades foi aprovada.')).toBeVisible()
+  await panel.getByRole('button', { name: 'Marcar como lida: Sua solicitação para ministrar atividades foi aprovada.' }).click()
+  await expect(student.getByRole('button', { name: 'Notificações', exact: true })).toBeVisible()
+  await studentContext.close(); await teacherContext.close()
+})
+
+test('aluno propõe aula, professor aprova e acompanha inscrições e presença', async ({ browser }) => {
+  const teacherContext = await browser.newContext()
+  const teacher = await teacherContext.newPage()
+  await login(teacher, teacherEmail)
+  const instructorContext = await browser.newContext()
+  const instructor = await instructorContext.newPage()
+  await login(instructor, studentEmail)
+  await instructor.getByRole('button', { name: 'Minha área' }).click()
+  await instructor.getByRole('link', { name: 'Minhas aulas' }).click()
+  await instructor.getByRole('link', { name: 'Propor uma aula' }).click()
+  await instructor.getByLabel('Título da aula').fill(theme)
+  await instructor.getByLabel('Tema', { exact: true }).fill('Teste de integração')
+  await instructor.getByLabel('Descrição').fill('Uma atividade prática para testar o fluxo completo.')
+  await instructor.getByLabel('Tipo de sala').selectOption('DESKTOP')
+  await instructor.getByLabel('Número da sala').fill('101')
+  const date = new Date(Date.now() + (40 + Math.floor(Math.random() * 3000)) * 86400000).toISOString().slice(0, 10)
+  await instructor.getByLabel('Data', { exact: true }).fill(date)
+  await instructor.getByLabel('Horário de início').fill('10:00')
+  await instructor.getByLabel('Horário de término').fill('12:00')
+  await instructor.getByRole('button', { name: 'Enviar proposta' }).click()
+  await expect(instructor.getByText('Proposta enviada. Aguarde a avaliação de um professor.')).toBeVisible()
+  await teacher.getByRole('link', { name: 'Área do professor' }).click()
+  await teacher.locator('article').filter({ hasText: theme }).getByRole('button', { name: 'Aprovar aula' }).click()
+  await expect(teacher.getByText('Aula aprovada e publicada.')).toBeVisible()
+  await teacher.getByRole('link', { name: /Aulas que aprovei/ }).click()
+
+  const studentContext = await browser.newContext({ viewport: { width: 390, height: 844 } })
+  const student = await studentContext.newPage()
+  await login(student, studentEmail)
+  await student.getByLabel('Pesquisar por tema').fill('Teste de integração')
+  await student.getByRole('button', { name: 'Buscar' }).click()
+  const card = student.locator('article').filter({ hasText: theme })
+  await card.getByRole('button', { name: 'Ver detalhes' }).click()
+  await student.getByRole('button', { name: 'Escolher assento' }).click()
+  await student.getByRole('button', { name: 'Assento A1, disponível' }).click()
+  await student.getByRole('button', { name: 'Confirmar inscrição' }).click()
+  await expect(student.getByText('Inscrição confirmada no assento A1.')).toBeVisible()
+  await expect(student.getByRole('button', { name: 'Assento A1, seu assento' })).toBeDisabled()
+  await student.getByRole('button', { name: 'Minha área' }).click()
+  await student.getByRole('link', { name: 'Minhas inscrições' }).click()
+  await expect(student.locator('article').filter({ hasText: theme })).toContainText('A1')
+  await student.getByRole('button', { name: 'Cancelar inscrição' }).click()
+  await expect(student.getByText(`Inscrição em “${theme}” cancelada.`)).toBeVisible()
+  await student.getByRole('link', { name: 'Atividades', exact: true }).click()
+  await student.locator('article').filter({ hasText: theme }).getByRole('button', { name: 'Ver detalhes' }).click()
+  await student.getByRole('button', { name: 'Escolher assento' }).click()
+  await student.getByRole('button', { name: 'Assento A1, disponível' }).click()
+  await student.getByRole('button', { name: 'Confirmar inscrição' }).click()
+  await expect(student.getByText('Inscrição confirmada no assento A1.')).toBeVisible()
+
+  await instructor.reload()
+  await instructor.locator('article').filter({ hasText: theme }).getByRole('link', { name: 'Abrir aula' }).click()
+  const person = instructor.locator('article').filter({ hasText: studentName })
+  await person.getByRole('button', { name: 'Ausente' }).click()
+  await expect(person.getByText(/· Ausente/)).toBeVisible()
+
+  const approved = teacher.locator('article').filter({ hasText: theme })
+  await approved.getByRole('button', { name: 'Ver participantes' }).click()
+  await expect(approved.locator('.participants').getByText(new RegExp(studentName))).toBeVisible()
+  await approved.getByRole('button', { name: 'Presente', exact: true }).click()
+  await expect(approved.getByText(/· Presente/)).toBeVisible()
+  teacher.once('dialog', dialog => dialog.accept())
+  await approved.getByRole('button', { name: 'Cancelar aula' }).click()
+  await expect(teacher.getByText('Aula cancelada.')).toBeVisible()
+  await student.getByRole('button', { name: /Notificações/ }).click()
+  await expect(student.getByRole('region', { name: 'Notificações recentes' }).getByText(`A atividade ‘${theme}’ foi cancelada.`)).toBeVisible()
+  await studentContext.close(); await teacherContext.close(); await instructorContext.close()
+})
+
+test('rejeita senha incorreta e mantém sessão encerrada', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Entrar', exact: true }).click()
+  await page.getByLabel('E-mail').fill(teacherEmail)
+  await page.getByLabel('Senha', { exact: true }).fill('senha-incorreta')
+  await page.locator('button[type=submit]').getByText('Entrar').click()
+  await expect(page.getByRole('alert')).toContainText('E-mail ou senha inválidos.')
+  await expect(page.getByRole('button', { name: 'Sair' })).toHaveCount(0)
+})
+
+test('dois alunos disputando o mesmo assento têm apenas uma inscrição confirmada', async ({ browser, request }) => {
+  const teacherLogin = await request.post(`${api}/api/auth/login`, { data: { email: teacherEmail, password } })
+  expect(teacherLogin.ok()).toBeTruthy()
+  const { accessToken } = await teacherLogin.json()
+  const start = new Date(Date.now() + (3100 + Math.floor(Math.random() * 3000)) * 86400000)
+  start.setUTCHours(14, 0, 0, 0)
+  const raceTheme = `Concorrência ${unique}`
+  const studentLogin = await request.post(`${api}/api/auth/login`, { data: { email: studentEmail, password } })
+  const studentToken = (await studentLogin.json()).accessToken
+  const created = await request.post(`${api}/api/propostas`, { headers: { Authorization: `Bearer ${studentToken}` }, data: { titulo: raceTheme, tema: raceTheme, descricao: 'Teste simultâneo de assentos.', tipoSala: 'NOTEBOOK', numeroSala: '202', inicio: start.toISOString(), fim: new Date(start.getTime() + 7200000).toISOString() } })
+  expect(created.status()).toBe(201)
+  const proposalId = (await created.json()).id
+  const approved = await request.post(`${api}/api/propostas/${proposalId}/avaliar`, { headers: { Authorization: `Bearer ${accessToken}` }, data: { decisao: 'aprovada' } })
+  expect(approved.status()).toBe(200)
+  const users = [`race-a-${unique}@example.test`, `race-b-${unique}@example.test`]
+  for (const email of users) {
+    const response = await request.post(`${api}/api/auth/register`, { data: { name: email, email, course: 'DSM', password } })
+    expect(response.status()).toBe(201)
+  }
+  const contexts = await Promise.all(users.map(() => browser.newContext()))
+  try {
+    const pages = await Promise.all(contexts.map(context => context.newPage()))
+    await Promise.all(pages.map(async (page, i) => {
+      await login(page, users[i])
+      await page.locator('article').filter({ hasText: raceTheme }).getByRole('button', { name: 'Ver detalhes' }).click()
+      await page.getByRole('button', { name: 'Escolher assento' }).click()
+      await page.getByRole('button', { name: 'Assento A1, disponível' }).click()
+    }))
+    await Promise.all(pages.map(page => page.getByRole('button', { name: 'Confirmar inscrição' }).click()))
+    await Promise.all(pages.map(page => expect(page.locator('[role=status], [role=alert]').filter({ hasText: /Inscrição confirmada|assento já está ocupado/ })).toBeVisible()))
+    const messages = await Promise.all(pages.map(page => page.locator('[role=status], [role=alert]').filter({ hasText: /Inscrição confirmada|assento já está ocupado/ }).innerText()))
+    expect(messages.filter(message => message.includes('Inscrição confirmada'))).toHaveLength(1)
+    expect(messages.filter(message => message.includes('assento já está ocupado'))).toHaveLength(1)
+  } finally { await Promise.all(contexts.map(context => context.close())) }
+})

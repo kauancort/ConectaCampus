@@ -14,11 +14,42 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<Assento> Assentos => Set<Assento>();
     public DbSet<Atividade> Atividades => Set<Atividade>();
     public DbSet<Inscricao> Inscricoes => Set<Inscricao>();
+    public DbSet<SolicitacaoProfessor> SolicitacoesProfessor => Set<SolicitacaoProfessor>();
+    public DbSet<Notificacao> Notificacoes => Set<Notificacao>();
+    public DbSet<PropostaAula> PropostasAula => Set<PropostaAula>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
         builder.HasDefaultSchema(Schema);
+        builder.Entity<PropostaAula>(entity =>
+        {
+            entity.Property(x => x.Titulo).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Tema).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Descricao).HasMaxLength(5000).IsRequired();
+            entity.Property(x => x.NumeroSala).HasMaxLength(6);
+            entity.Property(x => x.TipoSala).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.MotivoRecusa).HasMaxLength(2000);
+            entity.HasOne(x => x.Aluno).WithMany().HasForeignKey(x => x.AlunoId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Professor).WithMany().HasForeignKey(x => x.ProfessorId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Atividade).WithMany().HasForeignKey(x => x.AtividadeId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => x.Status);
+            entity.HasIndex(x => x.ProfessorId);
+        });
+        builder.Entity<SolicitacaoProfessor>(entity =>
+        {
+            entity.Property(x => x.Justificativa).HasMaxLength(2000).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            entity.HasIndex(x => x.AlunoId).IsUnique().HasFilter("\"Status\" = 'pendente'");
+            entity.HasOne<Aluno>().WithMany().HasForeignKey(x => x.AlunoId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<Notificacao>(entity =>
+        {
+            entity.Property(x => x.Mensagem).HasMaxLength(500).IsRequired();
+            entity.HasIndex(x => new { x.UsuarioId, x.Lida });
+            entity.HasOne<Aluno>().WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+        });
         builder.Entity<Aluno>(entity =>
         {
             entity.Property(aluno => aluno.Nome).HasMaxLength(200).IsRequired();
@@ -27,6 +58,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         });
         builder.Entity<Sala>(entity =>
         {
+            entity.Property(sala => sala.Numero).HasMaxLength(6);
+            entity.HasIndex(sala => sala.Numero).IsUnique();
             entity.Property(sala => sala.Nome).HasMaxLength(120).IsRequired();
             entity.Property(sala => sala.Tipo).HasMaxLength(20).IsRequired();
             entity.Property(sala => sala.Capacidade).IsRequired();
@@ -53,6 +86,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(atividade => atividade.Fim).HasColumnType("timestamp with time zone");
             entity.Property(atividade => atividade.Tipo).HasMaxLength(30).IsRequired();
             entity.Property(atividade => atividade.Tema).HasMaxLength(200).IsRequired();
+            entity.Property(atividade => atividade.Titulo).HasMaxLength(200).IsRequired();
             entity.Property(atividade => atividade.Descricao).HasMaxLength(5000).IsRequired();
             entity.Property(atividade => atividade.Nivel).HasMaxLength(80).IsRequired();
             entity.Property(atividade => atividade.DataHoraUtc).HasColumnType("timestamp with time zone").IsRequired();

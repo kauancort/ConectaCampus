@@ -75,6 +75,12 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("PodeMinistrar")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("Professor")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
@@ -547,6 +553,11 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
 
+                    b.Property<string>("Titulo")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DataHoraUtc");
@@ -585,6 +596,9 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                     b.Property<DateTime?>("Data")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool?>("Presente")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -605,6 +619,108 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                     b.ToTable("Inscricoes", "conectacampus");
                 });
 
+            modelBuilder.Entity("AprendizagemColaborativa.Api.Models.Notificacao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CriadaEmUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Lida")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Mensagem")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("UsuarioId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId", "Lida");
+
+                    b.ToTable("Notificacoes", "conectacampus");
+                });
+
+            modelBuilder.Entity("AprendizagemColaborativa.Api.Models.PropostaAula", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AlunoId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("AtividadeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("AvaliadaEmUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CriadaEmUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)");
+
+                    b.Property<DateTime>("Fim")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("Inicio")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("MotivoRecusa")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("NumeroSala")
+                        .HasMaxLength(6)
+                        .HasColumnType("character varying(6)");
+
+                    b.Property<string>("ProfessorId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Tema")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("TipoSala")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Titulo")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AlunoId");
+
+                    b.HasIndex("AtividadeId");
+
+                    b.HasIndex("ProfessorId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("PropostasAula", "conectacampus");
+                });
+
             modelBuilder.Entity("AprendizagemColaborativa.Api.Models.Sala", b =>
                 {
                     b.Property<Guid>("Id")
@@ -619,6 +735,10 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
 
+                    b.Property<string>("Numero")
+                        .HasMaxLength(6)
+                        .HasColumnType("character varying(6)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -630,6 +750,9 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                         .HasColumnType("character varying(20)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Numero")
+                        .IsUnique();
 
                     b.ToTable("Salas", "conectacampus");
 
@@ -650,6 +773,44 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                             Status = "disponivel",
                             Tipo = "NOTEBOOK"
                         });
+                });
+
+            modelBuilder.Entity("AprendizagemColaborativa.Api.Models.SolicitacaoProfessor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AlunoId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("AvaliadaEmUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AvaliadorId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CriadaEmUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Justificativa")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AlunoId")
+                        .IsUnique()
+                        .HasFilter("\"Status\" = 'pendente'");
+
+                    b.ToTable("SolicitacoesProfessor", "conectacampus");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
@@ -778,6 +939,49 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                     b.Navigation("Assento");
 
                     b.Navigation("Atividade");
+                });
+
+            modelBuilder.Entity("AprendizagemColaborativa.Api.Models.Notificacao", b =>
+                {
+                    b.HasOne("AprendizagemColaborativa.Api.Models.Aluno", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AprendizagemColaborativa.Api.Models.PropostaAula", b =>
+                {
+                    b.HasOne("AprendizagemColaborativa.Api.Models.Aluno", "Aluno")
+                        .WithMany()
+                        .HasForeignKey("AlunoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AprendizagemColaborativa.Api.Models.Atividade", "Atividade")
+                        .WithMany()
+                        .HasForeignKey("AtividadeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AprendizagemColaborativa.Api.Models.Aluno", "Professor")
+                        .WithMany()
+                        .HasForeignKey("ProfessorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Aluno");
+
+                    b.Navigation("Atividade");
+
+                    b.Navigation("Professor");
+                });
+
+            modelBuilder.Entity("AprendizagemColaborativa.Api.Models.SolicitacaoProfessor", b =>
+                {
+                    b.HasOne("AprendizagemColaborativa.Api.Models.Aluno", null)
+                        .WithMany()
+                        .HasForeignKey("AlunoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>

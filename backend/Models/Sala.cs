@@ -3,6 +3,7 @@ namespace AprendizagemColaborativa.Api.Models;
 public sealed class Sala
 {
     public Guid Id { get; set; }
+    public string? Numero { get; set; }
     public string Nome { get; set; } = string.Empty;
     public string Tipo { get; set; } = string.Empty;
     public int Capacidade { get; set; }

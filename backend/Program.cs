@@ -108,7 +108,10 @@ app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapAuthEndpoints(new JwtSettings(jwtIssuer, jwtAudience, jwtKey, TimeSpan.FromMinutes(jwtExpirationMinutes)));
+app.MapAcessoEndpoints();
+app.MapAlunosEndpoints();
 app.MapAtividadesEndpoints();
+app.MapPropostasEndpoints();
 app.MapAssentosEndpoints();
 app.MapInscricoesEndpoints();
 
@@ -116,6 +119,21 @@ await using (var scope = app.Services.CreateAsyncScope())
 {
     var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await database.Database.MigrateAsync();
+    if (args.Length == 2 && args[0] == "conceder-professor")
+    {
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<Aluno>>();
+        var user = await users.FindByEmailAsync(args[1]) ?? throw new InvalidOperationException("Conta não encontrada.");
+        user.Professor = true;
+        var result = await users.UpdateAsync(user);
+        if (!result.Succeeded) throw new InvalidOperationException("Não foi possível atualizar a conta.");
+        Console.WriteLine("Acesso de professor concedido.");
+        return;
+    }
+    if (builder.Configuration.GetValue<bool>("DEMO_ACCOUNTS_ENABLED"))
+    {
+        await DemoAccountSeeder.SeedAsync(scope.ServiceProvider.GetRequiredService<UserManager<Aluno>>(), app.Logger);
+        await CampusSeed.SeedAsync(database, scope.ServiceProvider.GetRequiredService<UserManager<Aluno>>(), app.Logger);
+    }
 }
 
 await app.RunAsync();

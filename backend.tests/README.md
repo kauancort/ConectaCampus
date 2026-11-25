@@ -45,18 +45,18 @@ e não monta nenhum volume do MySQL ou do ambiente local. Nunca use a conexão d
 Se o WSL encerrar automaticamente quando não houver uma sessão aberta, mantenha um terminal
 WSL aberto enquanto executa os testes.
 
-Os 21 casos novos de integração verificam o mapa público sem dados pessoais, o isolamento
+Os testes de integração verificam o mapa autenticado sem dados pessoais, o isolamento
 entre atividades, autenticação, uso do aluno do token, consulta das próprias inscrições,
 assentos inválidos, duplicidade, concorrência, cancelamento e reinscrição. Também provocam
 uma violação real do índice único para verificar HTTP 409 e rollback da transação.
-Somados aos testes existentes, unitários e de migração PostgreSQL, são 41 casos.
+Os testes existentes incluem ainda autenticação, permissões, solicitações, notificações, concorrência e migrações PostgreSQL.
 Os casos adicionais validam reaplicação das migrations sem duplicar o seed, isolamento
 das tabelas/Identity em schema privado e filtros por tema sem distinguir maiúsculas,
 com `%`, `_` e `\` tratados como texto literal.
 
 ## Contratos implementados
 
-- `GET /api/atividades/{id}/assentos`: identificação, tema, data, início/fim em UTC,
+- `GET /api/atividades/{id}/assentos`: exige autenticação e retorna identificação, tema, data, início/fim em UTC,
   sala, capacidade total, lugares disponíveis e assentos ordenados por fileira/coluna.
   Status: `DISPONIVEL` ou `OCUPADO`, considerando somente inscrições ativas dessa atividade.
   Atividade inexistente retorna 404; atividade legada sem sala retorna 409.

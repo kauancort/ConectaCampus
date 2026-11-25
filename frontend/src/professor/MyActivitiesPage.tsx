@@ -1,3 +1,4 @@
+import SiteFooter from '../SiteFooter'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth'
@@ -148,6 +149,7 @@ export default function MyActivitiesPage() {
   const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState(navigationState?.createdMessage ?? '')
+  const [participants, setParticipants] = useState<{ alunoId: string; nomeAluno: string; status: string }[]>([])
 
   const loadActivities = useCallback(async (signal?: AbortSignal) => {
     setLoading(true)
@@ -197,11 +199,20 @@ export default function MyActivitiesPage() {
       const activity = normalizeActivity(detailFromResponse(response))
       if (!activity) throw new Error('A API retornou dados inválidos para esta atividade.')
       setSelected(activity)
+      setParticipants(await professorApiRequest(`/api/atividades/${encodeURIComponent(id)}/inscricoes`, { method: 'GET' }, token))
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Não foi possível carregar os detalhes da atividade.')
     } finally {
       setLoadingDetailId(null)
     }
+  }
+
+  async function cancelActivity() {
+    if (!selected || !window.confirm('Cancelar esta atividade? Os inscritos serão notificados.')) return
+    try {
+      await professorApiRequest(`/api/atividades/${encodeURIComponent(selected.id)}/cancelar`, { method: 'POST' }, token)
+      setSelected(null); setNotice('Atividade cancelada.'); await loadActivities()
+    } catch (requestError) { setError(requestError instanceof Error ? requestError.message : 'Não foi possível cancelar.') }
   }
 
   return <div className="app-shell professor-registration professor-activities">
@@ -210,7 +221,7 @@ export default function MyActivitiesPage() {
     <main className="main-content activities-content">
       <div className="heading activities-heading">
         <div>
-          <p className="eyebrow">ATIVIDADES ACADÊMICAS</p>
+
           <h1>Minhas atividades</h1>
           <p className="subtitle">Consulte as atividades cadastradas e os detalhes das salas reservadas.</p>
         </div>
@@ -239,6 +250,8 @@ export default function MyActivitiesPage() {
           <InfoItem label="Tipo de sala" value={selected.roomType ?? 'Não informado'} />
           <InfoItem label="Capacidade total" value={selected.capacity === null ? 'Não informada' : `${selected.capacity} lugares`} />
         </div>
+        <div className="participants"><h3>Participantes</h3>{participants.length === 0 ? <p>Nenhuma inscrição ainda.</p> : participants.map(item => <p key={item.alunoId}>{item.nomeAluno} · {item.status}</p>)}</div>
+        <button className="button secondary" type="button" onClick={() => void cancelActivity()}>Cancelar atividade</button>
       </section> : <>
         {loading && <div className="panel activities-loading" role="status"><span className="spinner dark" aria-hidden="true" /> Carregando atividades…</div>}
 
@@ -271,6 +284,6 @@ export default function MyActivitiesPage() {
       </>}
     </main>
 
-    <footer>ConectaCampus · Fatec Shunji Nishimura de Pompeia</footer>
+    <SiteFooter />
   </div>
 }

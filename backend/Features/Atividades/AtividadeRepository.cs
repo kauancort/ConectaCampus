@@ -21,10 +21,10 @@ public sealed class AtividadeRepository(ApplicationDbContext db)
 
     public Task<List<Sala>> ObterSalasDisponiveisComBloqueioAsync(
         string tipoSala,
-        CancellationToken cancellationToken) =>
-        db.Salas
-            .FromSqlInterpolated($"""SELECT * FROM conectacampus."Salas" WHERE "Tipo" = {tipoSala} AND "Status" = {SalaDisponivel} ORDER BY "Id" FOR UPDATE""")
-            .ToListAsync(cancellationToken);
+        CancellationToken cancellationToken, Guid? salaEspecificaId = null) =>
+        salaEspecificaId is { } id
+            ? db.Salas.FromSqlInterpolated($"""SELECT * FROM conectacampus."Salas" WHERE "Tipo" = {tipoSala} AND "Status" = {SalaDisponivel} AND "Id" = {id} ORDER BY "Id" FOR UPDATE""").ToListAsync(cancellationToken)
+            : db.Salas.FromSqlInterpolated($"""SELECT * FROM conectacampus."Salas" WHERE "Tipo" = {tipoSala} AND "Status" = {SalaDisponivel} AND "Numero" IS NULL ORDER BY "Id" FOR UPDATE""").ToListAsync(cancellationToken);
 
     public Task<bool> ExisteConflitoDeHorarioAsync(
         Guid salaId,
@@ -45,12 +45,14 @@ public sealed class AtividadeRepository(ApplicationDbContext db)
     public Task<Atividade?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken) =>
         db.Atividades.AsNoTracking()
             .Include(atividade => atividade.Sala)
+            .Include(atividade => atividade.Responsavel)
             .SingleOrDefaultAsync(atividade => atividade.Id == id, cancellationToken);
 
     public Task<List<Atividade>> ListarAsync(string? tema, CancellationToken cancellationToken)
     {
         var query = db.Atividades.AsNoTracking()
             .Include(atividade => atividade.Sala)
+            .Include(atividade => atividade.Responsavel)
             .Where(atividade =>
                 atividade.Status == "publicada" &&
                 atividade.SalaId != null &&
@@ -69,6 +71,7 @@ public sealed class AtividadeRepository(ApplicationDbContext db)
     public Task<List<Atividade>> ListarDoResponsavelAsync(string responsavelId, CancellationToken cancellationToken) =>
         db.Atividades.AsNoTracking()
             .Include(atividade => atividade.Sala)
+            .Include(atividade => atividade.Responsavel)
             .Where(atividade =>
                 atividade.ResponsavelId == responsavelId &&
                 atividade.SalaId != null &&

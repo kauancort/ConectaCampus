@@ -28,6 +28,7 @@ describe('minhas atividades do professor', () => {
     const fetchMock = vi.fn((url: string) => {
       if (url === '/api/atividades/minhas') return Promise.resolve(json([first, second]))
       if (url === '/api/atividades/atividade-2') return Promise.resolve(json(second))
+      if (url === '/api/atividades/atividade-2/inscricoes') return Promise.resolve(json([]))
       return Promise.reject(new Error(`Rota inesperada: ${url}`))
     })
     vi.stubGlobal('fetch', fetchMock)

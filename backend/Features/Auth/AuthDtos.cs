@@ -3,8 +3,9 @@ namespace AprendizagemColaborativa.Api.Features.Auth;
 public sealed record RegisterRequest(string? Name, string? Email, string? Course, string? Password);
 
 public sealed record LoginRequest(string? Email, string? Password);
+public sealed record UpdateProfileRequest(string? Name, string? Course);
 
-public sealed record StudentResponse(string Id, string Name, string Email, string Course);
+public sealed record StudentResponse(string Id, string Name, string Email, string Course, bool Professor, bool PodeMinistrar);
 
 public sealed record LoginResponse(string AccessToken, string TokenType, DateTimeOffset ExpiresAtUtc, StudentResponse Student);
 

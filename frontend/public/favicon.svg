@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <g transform="rotate(-8 32 32)">
+    <path fill="#da7254" d="M5 5h18a8 8 0 0 1 8 8v18H13a8 8 0 0 1-8-8z"/>
+    <path fill="#214c41" d="M35 5h16a8 8 0 0 1 8 8v18H43a8 8 0 0 1-8-8z"/>
+    <path fill="#214c41" d="M5 35h18a8 8 0 0 1 8 8v16H13a8 8 0 0 1-8-8z"/>
+    <path fill="#da7254" d="M35 35h16a8 8 0 0 1 8 8v16H43a8 8 0 0 1-8-8z"/>
+  </g>
+</svg>

@@ -32,8 +32,87 @@ afterEach(() => {
 })
 
 describe('jornadas da área do aluno', () => {
+  it('apresenta o projeto sem carregar ou mostrar atividades para visitantes', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(json([activity]))
+    vi.stubGlobal('fetch', fetchMock)
+    renderApp()
+    expect(screen.getByRole('heading', { name: /Todo mundo tem algo para ensinar/ })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Como funciona.' })).toBeTruthy()
+    expect(screen.queryByText('Oficina de testes')).toBeNull()
+    expect(screen.queryByLabelText('Pesquisar por tema')).toBeNull()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).startsWith('/api/atividades'))).toBe(false)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Criar minha conta' })[0])
+    expect(screen.getByRole('button', { name: 'Criar conta' })).toBeTruthy()
+  })
+  it('mostra erro de credenciais inválidas sem iniciar sessão', async () => {
+    vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(url === '/api/auth/login' ? json({ message: 'E-mail ou senha inválidos.' }, 401) : json([]))))
+    renderApp()
+    fireEvent.click(await screen.findByRole('link', { name: 'Entrar' }))
+    fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: 'ada@example.test' } })
+    fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'errada' } })
+    fireEvent.click(screen.getByText('Entrar', { selector: 'button[type="submit"]' }))
+    expect(await screen.findByRole('alert')).toHaveProperty('textContent', 'E-mail ou senha inválidos.')
+    expect(localStorage.getItem('ac-token')).toBeNull()
+  })
+
+  it('encerra sessão inválida ao revalidar o perfil salvo', async () => {
+    localStorage.setItem('ac-token', 'expirado')
+    localStorage.setItem('ac-student', JSON.stringify({ id: '1', name: 'Ada', email: 'ada@example.test', course: 'DSM' }))
+    vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(url === '/api/auth/me' ? json({}, 401) : json([]))))
+    renderApp()
+    await waitFor(() => expect(localStorage.getItem('ac-token')).toBeNull())
+    expect(screen.getByRole('link', { name: 'Entrar' })).toBeTruthy()
+  })
+
+  it('atualiza o mapa quando outro aluno ocupa o assento', async () => {
+    localStorage.setItem('ac-token', 'token')
+    localStorage.setItem('ac-student', JSON.stringify({ id: '1', name: 'Ada', email: 'ada@example.test', course: 'DSM' }))
+    let occupied = false
+    const map = () => ({ atividadeId: activity.id, tema: activity.tema, inicio: activity.inicio, fim: activity.fim, sala: activity.sala, capacidadeTotal: 24, lugaresDisponiveis: occupied ? 23 : 24, assentos: [{ id: 'a1', codigo: 'A1', fileira: 'A', coluna: 1, status: occupied ? 'OCUPADO' : 'DISPONIVEL' }] })
+    vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => {
+      if (url === '/api/auth/me') return Promise.resolve(json({ id: '1', name: 'Ada', email: 'ada@example.test', course: 'DSM' }))
+      if (url === '/api/atividades') return Promise.resolve(json([activity]))
+      if (url === '/api/inscricoes/minhas' || url === '/api/notificacoes') return Promise.resolve(json([]))
+      if (url === `/api/atividades/${activity.id}`) return Promise.resolve(json(activity))
+      if (url === `/api/atividades/${activity.id}/assentos`) return Promise.resolve(json(map()))
+      if (url === `/api/atividades/${activity.id}/inscricoes` && init?.method === 'POST') { occupied = true; return Promise.resolve(json({ message: 'Ocupado' }, 409)) }
+      return Promise.reject(new Error(`Rota inesperada: ${url}`))
+    }))
+    renderApp()
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver detalhes' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Escolher assento' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Assento A1, disponível' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar inscrição' }))
+    expect(await screen.findByRole('alert')).toHaveProperty('textContent', 'Ocupado')
+    expect((screen.getByRole('button', { name: 'Assento A1, ocupado' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+  it('mostra o próprio assento e impede uma segunda inscrição', async () => {
+    const profile = { id: '1', name: 'Ada', email: 'ada@example.test', course: 'DSM' }
+    localStorage.setItem('ac-token', 'token')
+    localStorage.setItem('ac-student', JSON.stringify(profile))
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url === '/api/auth/me') return Promise.resolve(json(profile))
+      if (url === '/api/atividades') return Promise.resolve(json([activity]))
+      if (url === '/api/inscricoes/minhas' || url === '/api/notificacoes') return Promise.resolve(json([]))
+      if (url === `/api/atividades/${activity.id}`) return Promise.resolve(json(activity))
+      if (url === `/api/atividades/${activity.id}/assentos`) return Promise.resolve(json({ atividadeId: activity.id, tema: activity.tema, inicio: activity.inicio, fim: activity.fim, sala: activity.sala, lugaresDisponiveis: 23, jaInscrito: true, meuAssentoId: 'a1', assentos: [{ id: 'a1', codigo: 'A1', fileira: 'A', coluna: 1, status: 'OCUPADO' }, { id: 'a2', codigo: 'A2', fileira: 'A', coluna: 2, status: 'DISPONIVEL' }] }))
+      return Promise.reject(new Error(`Rota inesperada: ${url}`))
+    }))
+    renderApp()
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver detalhes' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Escolher assento' }))
+    expect((await screen.findByRole('button', { name: 'Assento A1, seu assento' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Assento A2, disponível' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByText(/Você já está inscrito/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Confirmar inscrição' })).toBeNull()
+  })
   it('pesquisa atividades por tema e preserva a navegação para a área do professor', async () => {
+    const profile = { id: 'aluno-1', name: 'Ada', email: 'ada@example.test', course: 'DSM' }
+    localStorage.setItem('ac-token', 'token-de-teste')
+    localStorage.setItem('ac-student', JSON.stringify(profile))
     const fetchMock = vi.fn((url: string) => {
+      if (url === '/api/auth/me') return Promise.resolve(json(profile))
+      if (url === '/api/notificacoes' || url === '/api/inscricoes/minhas') return Promise.resolve(json([]))
       if (url === '/api/atividades') return Promise.resolve(json([]))
       if (url === '/api/atividades?tema=testes') return Promise.resolve(json([activity]))
       return Promise.reject(new Error(`Rota inesperada: ${url}`))
@@ -45,7 +124,7 @@ describe('jornadas da área do aluno', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Buscar' }))
 
     expect(await screen.findByText('Oficina de testes')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Área do professor' }).getAttribute('href')).toBe('/professor/atividades')
+    expect(screen.queryByRole('link', { name: 'Área do professor' })).toBeNull()
   })
 
   it('permite criar conta, entrar e sair sem deixar a sessão armazenada', async () => {
@@ -62,12 +141,13 @@ describe('jornadas da área do aluno', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     renderApp()
-    fireEvent.click(await screen.findByRole('button', { name: 'Entrar' }))
+    fireEvent.click(await screen.findByRole('link', { name: 'Entrar' }))
     fireEvent.click(screen.getByRole('button', { name: 'Criar cadastro' }))
     fireEvent.change(screen.getByLabelText('Nome'), { target: { value: 'Ada' } })
     fireEvent.change(screen.getByLabelText('Curso'), { target: { value: 'DSM' } })
     fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: 'ada@example.test' } })
     fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'Fatec!Teste2026' } })
+    fireEvent.change(screen.getByLabelText('Confirmar senha'), { target: { value: 'Fatec!Teste2026' } })
     fireEvent.click(screen.getByRole('button', { name: 'Criar conta' }))
     expect(await screen.findByText('Cadastro realizado. Entre com seu e-mail e senha.')).toBeTruthy()
 
@@ -76,12 +156,19 @@ describe('jornadas da área do aluno', () => {
     expect(await screen.findByText('Bem-vindo(a), Ada.')).toBeTruthy()
     expect(localStorage.getItem('ac-token')).toBe('novo-token')
     fireEvent.click(screen.getByRole('button', { name: 'Sair' }))
-    expect(screen.getByRole('button', { name: 'Entrar' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Entrar' })).toBeTruthy()
     expect(localStorage.getItem('ac-token')).toBeNull()
+    expect(screen.getByRole('heading', { name: /Todo mundo tem algo para ensinar/ })).toBeTruthy()
+    expect(screen.queryByLabelText('Pesquisar por tema')).toBeNull()
   })
 
   it('exibe apenas atividades publicadas e permite consultar seus detalhes', async () => {
+    const profile = { id: 'aluno-1', name: 'Ada', email: 'ada@example.test', course: 'DSM' }
+    localStorage.setItem('ac-token', 'token-de-teste')
+    localStorage.setItem('ac-student', JSON.stringify(profile))
     const fetchMock = vi.fn((url: string) => {
+      if (url === '/api/auth/me') return Promise.resolve(json(profile))
+      if (url === '/api/notificacoes' || url === '/api/inscricoes/minhas') return Promise.resolve(json([]))
       if (url === '/api/atividades') return Promise.resolve(json([activity, { ...activity, id: 'cancelada', tema: 'Não deve aparecer', status: 'cancelada' }]))
       if (url === `/api/atividades/${activity.id}`) return Promise.resolve(json(activity))
       return Promise.reject(new Error(`Rota inesperada: ${url}`))
@@ -119,7 +206,8 @@ describe('jornadas da área do aluno', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     renderApp()
-    fireEvent.click(await screen.findByRole('button', { name: 'Minhas inscrições' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Minha área' }))
+    fireEvent.click(await screen.findByRole('link', { name: 'Minhas inscrições' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Cancelar inscrição' }))
 
     expect(await screen.findByText(`Inscrição em “${activity.tema}” cancelada.`)).toBeTruthy()
@@ -162,4 +250,27 @@ describe('jornadas da área do aluno', () => {
     expect(fetchMock).toHaveBeenCalledWith(`/api/atividades/${activity.id}/inscricoes`, expect.objectContaining({ method: 'POST' }))
     expect(await screen.findByText('23')).toBeTruthy()
   })
+})
+
+it('pagina o catálogo e volta à primeira página ao pesquisar', async () => {
+  const profile = { id: '1', name: 'Ada', email: 'ada@example.test', course: 'DSM' }
+  localStorage.setItem('ac-token', 'token'); localStorage.setItem('ac-student', JSON.stringify(profile))
+  const activities = Array.from({ length: 13 }, (_, i) => ({ ...activity, id: `a${i}`, titulo: `Aula ${i + 1}` }))
+  vi.stubGlobal('fetch', vi.fn((url: string) => {
+    if (url === '/api/auth/me') return Promise.resolve(json(profile))
+    if (url === '/api/atividades') return Promise.resolve(json(activities))
+    if (url === '/api/atividades?tema=testes') return Promise.resolve(json(activities.slice(0, 2)))
+    return Promise.resolve(json([]))
+  }))
+  renderApp()
+  expect(await screen.findByText('Aula 1')).toBeTruthy()
+  expect(screen.queryByText('Aula 7')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Próxima →' }))
+  expect(screen.getByText('Aula 7')).toBeTruthy()
+  expect(screen.getByText('Página 2 de 3')).toBeTruthy()
+  fireEvent.change(screen.getByLabelText('Pesquisar por tema'), { target: { value: 'testes' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Buscar' }))
+  expect(await screen.findByText('Aula 1')).toBeTruthy()
+  expect(screen.queryByText('Aula 7')).toBeNull()
+  expect(screen.queryByRole('navigation', { name: 'Paginação: atividades' })).toBeNull()
 })

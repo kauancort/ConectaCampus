@@ -11,6 +11,7 @@ public sealed class Inscricao
     public Assento? Assento { get; set; }
     public DateTime? Data { get; set; }
     public string Status { get; set; } = "ativa";
+    public bool? Presente { get; set; }
     public DateTime CriadaEmUtc { get; set; }
     public DateTime AtualizadaEmUtc { get; set; }
 }

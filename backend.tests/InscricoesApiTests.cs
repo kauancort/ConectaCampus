@@ -37,10 +37,10 @@ public sealed class InscricoesApiTests(WebApplicationFactory<Program> factory)
     [Theory]
     [InlineData("DESKTOP", 24, 6)]
     [InlineData("NOTEBOOK", 20, 5)]
-    public async Task Mapa_publico_retorna_grade_completa_sem_dados_pessoais(string tipo, int capacidade, int colunas)
+    public async Task Mapa_autenticado_retorna_grade_completa_sem_dados_pessoais(string tipo, int capacidade, int colunas)
     {
         var atividade = tipo == "DESKTOP" ? _atividade : await CriarAtividadeAsync(tipo);
-        using var response = await _public.GetAsync($"/api/atividades/{atividade.Id}/assentos");
+        using var response = await _primeiro.GetAsync($"/api/atividades/{atividade.Id}/assentos");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var mapa = (await response.Content.ReadFromJsonAsync<MapaAssentosResponse>())!;
         Assert.Equal(atividade.Id, mapa.AtividadeId);
@@ -89,6 +89,17 @@ public sealed class InscricoesApiTests(WebApplicationFactory<Program> factory)
         var mapa = await MapaAsync(_atividade.Id);
         Assert.Equal(23, mapa.LugaresDisponiveis);
         Assert.Single(mapa.Assentos, item => item.Status == "OCUPADO" && item.Id == AssentoA1);
+        Assert.True(mapa.JaInscrito);
+        Assert.Equal(AssentoA1, mapa.MeuAssentoId);
+        var mapaOutro = (await _segundo.GetFromJsonAsync<MapaAssentosResponse>($"/api/atividades/{_atividade.Id}/assentos"))!;
+        Assert.False(mapaOutro.JaInscrito);
+        Assert.Null(mapaOutro.MeuAssentoId);
+        Assert.Equal("OCUPADO", mapaOutro.Assentos.Single(item => item.Id == AssentoA1).Status);
+        Assert.Equal(HttpStatusCode.NoContent, (await _primeiro.DeleteAsync($"/api/atividades/{_atividade.Id}/inscricoes/me")).StatusCode);
+        var aposCancelar = await MapaAsync(_atividade.Id);
+        Assert.False(aposCancelar.JaInscrito);
+        Assert.Null(aposCancelar.MeuAssentoId);
+        Assert.Equal("DISPONIVEL", aposCancelar.Assentos.Single(item => item.Id == AssentoA1).Status);
     }
 
     [Fact]
@@ -153,7 +164,7 @@ public sealed class InscricoesApiTests(WebApplicationFactory<Program> factory)
     public async Task Atividade_inexistente_retorna_404_no_mapa_e_na_reserva()
     {
         var id = Guid.NewGuid();
-        using var mapa = await _public.GetAsync($"/api/atividades/{id}/assentos");
+        using var mapa = await _primeiro.GetAsync($"/api/atividades/{id}/assentos");
         using var reserva = await _primeiro.PostAsJsonAsync($"/api/atividades/{id}/inscricoes", new { assentoId = AssentoA1 });
         Assert.Equal(HttpStatusCode.NotFound, mapa.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, reserva.StatusCode);
@@ -286,7 +297,7 @@ public sealed class InscricoesApiTests(WebApplicationFactory<Program> factory)
         client.PostAsJsonAsync(UrlInscricao(), new { assentoId });
 
     private async Task<MapaAssentosResponse> MapaAsync(Guid atividadeId) =>
-        (await _public.GetFromJsonAsync<MapaAssentosResponse>($"/api/atividades/{atividadeId}/assentos"))!;
+        (await _primeiro.GetFromJsonAsync<MapaAssentosResponse>($"/api/atividades/{atividadeId}/assentos"))!;
 
     private Task AssertQuantidadeAsync(int quantidade) => ComBancoAsync(async db =>
         Assert.Equal(quantidade, await db.Inscricoes.CountAsync(item => item.AtividadeId == _atividade.Id)));
@@ -319,13 +330,11 @@ public sealed class InscricoesApiTests(WebApplicationFactory<Program> factory)
     private async Task<AtividadeResponse> CriarAtividadeAsync(string tipo = "DESKTOP")
     {
         var inicio = new DateTimeOffset(2032, 1, 1, 14, 0, 0, TimeSpan.Zero).AddDays(Interlocked.Increment(ref _dia));
-        using var response = await _primeiro.PostAsJsonAsync("/api/atividades", new
-        {
-            tema = "Reserva de assento", descricao = "Teste de integração isolado", modalidade = "AULA",
-            tipoSala = tipo, inicio = inicio.ToString("O"), fim = inicio.AddHours(2).ToString("O")
-        });
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var atividade = (await response.Content.ReadFromJsonAsync<AtividadeResponse>())!;
+        await using var scope = factory.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider.GetRequiredService<AtividadeService>();
+        var request = new CriarAtividadeRequest("Reserva de assento", "Teste de integração isolado", "AULA", tipo, inicio.ToString("O"), inicio.AddHours(2).ToString("O"));
+        var result = await service.CriarAsync(request, _alunos[0], CancellationToken.None);
+        var atividade = Assert.IsType<AtividadeResponse>(result.Atividade);
         _atividades.Add(atividade.Id);
         return atividade;
     }

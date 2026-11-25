@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using AprendizagemColaborativa.Api.Data;
+using AprendizagemColaborativa.Api.Features.Auth;
 using AprendizagemColaborativa.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -46,6 +47,7 @@ public static class InscricoesEndpoints
                 SituacaoInscricao.AtividadeInexistente => Results.NotFound(),
                 SituacaoInscricao.AssentoInvalido => Results.BadRequest(new { message = "O assento não pertence à sala da atividade." }),
                 SituacaoInscricao.AtividadeCancelada => Results.Conflict(new { message = "Atividades canceladas não aceitam inscrições." }),
+                SituacaoInscricao.AtividadeEncerrada => Results.Conflict(new { message = "A atividade já começou." }),
                 SituacaoInscricao.AlunoJaInscrito => Results.Conflict(new { message = "Você já está inscrito nesta atividade." }),
                 SituacaoInscricao.AssentoOcupado => Results.Conflict(new { message = "Este assento já está ocupado nesta atividade." }),
                 SituacaoInscricao.SemVagas => Results.Conflict(new { message = "Não há vagas disponíveis nesta atividade." }),
@@ -81,6 +83,7 @@ public static class InscricoesEndpoints
             if (enrollment is not null && enrollment.Status == "ativa")
             {
                 enrollment.Status = "cancelada";
+                enrollment.Presente = null;
                 enrollment.AssentoId = null;
                 enrollment.AtualizadaEmUtc = DateTime.UtcNow;
                 await db.SaveChangesAsync();
@@ -108,13 +111,15 @@ public static class InscricoesEndpoints
             }
 
             var studentId = principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
-            if (!string.Equals(activity.OrganizadorId, studentId, StringComparison.Ordinal))
+            var approver = await AcessoEndpoints.ProfessorAsync(db, principal) && await db.PropostasAula.AnyAsync(p => p.AtividadeId == activityId && p.ProfessorId == studentId && p.Status == "aprovada");
+            if (!string.Equals(activity.OrganizadorId, studentId, StringComparison.Ordinal) && !string.Equals(activity.ResponsavelId, studentId, StringComparison.Ordinal) && !approver)
             {
                 return Results.Forbid();
             }
 
             var enrollments = (await db.Inscricoes.AsNoTracking()
                 .Include(item => item.Aluno)
+                .Include(item => item.Assento)
                 .Where(item => item.AtividadeId == activityId)
                 .OrderBy(item => item.CriadaEmUtc)
                 .ToListAsync())
@@ -123,9 +128,26 @@ public static class InscricoesEndpoints
                     item.Aluno.Nome,
                     item.Status,
                     ToUtcOffset(item.CriadaEmUtc),
-                    ToUtcOffset(item.AtualizadaEmUtc)))
+                    ToUtcOffset(item.AtualizadaEmUtc), item.Presente,
+                    item.Assento is { } assento ? new(assento.Id, assento.Codigo, assento.Fileira, assento.Coluna) : null))
                 .ToList();
             return Results.Ok(enrollments);
+        }).RequireAuthorization();
+
+        activities.MapPut("/{id:guid}/inscricoes/{alunoId}/presenca", async (Guid id, string alunoId, PresencaRequest? request, ClaimsPrincipal principal, ApplicationDbContext db) =>
+        {
+            var userId = principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
+            if (string.IsNullOrWhiteSpace(userId)) return Results.Unauthorized();
+            var ministrante = await db.Atividades.AnyAsync(a => a.Id == id && a.ResponsavelId == userId && db.PropostasAula.Any(p => p.AtividadeId == id && p.AlunoId == userId && p.Status == "aprovada"));
+            var professor = await AcessoEndpoints.ProfessorAsync(db, principal) && await db.PropostasAula.AnyAsync(p => p.AtividadeId == id && p.ProfessorId == userId && p.Status == "aprovada");
+            if (!ministrante && !professor) return Results.Forbid();
+            if (request is null) return Results.BadRequest();
+            var enrollment = await db.Inscricoes.SingleOrDefaultAsync(x => x.AtividadeId == id && x.AlunoId == alunoId && x.Status == "ativa");
+            if (enrollment is null) return Results.NotFound();
+            enrollment.Presente = request.Presente;
+            enrollment.AtualizadaEmUtc = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+            return Results.NoContent();
         }).RequireAuthorization();
 
         app.MapGet("/api/inscricoes/minhas", ListarMinhasAsync).RequireAuthorization().WithTags("Inscricoes");

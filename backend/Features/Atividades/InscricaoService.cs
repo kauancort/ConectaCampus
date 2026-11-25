@@ -29,6 +29,10 @@ public sealed class InscricaoService(ApplicationDbContext db)
         {
             return new(SituacaoInscricao.AtividadeCancelada);
         }
+        if (atividade.Inicio <= DateTime.UtcNow)
+        {
+            return new(SituacaoInscricao.AtividadeEncerrada);
+        }
 
         var assento = await db.Assentos.AsNoTracking()
             .SingleOrDefaultAsync(item => item.Id == assentoId && item.SalaId == atividade.SalaId, cancellationToken);
@@ -64,6 +68,7 @@ public sealed class InscricaoService(ApplicationDbContext db)
             db.Inscricoes.Add(inscricao);
         }
         inscricao.Status = "ativa";
+        inscricao.Presente = null;
         inscricao.AssentoId = assentoId;
         inscricao.Data = now;
         inscricao.AtualizadaEmUtc = now;
@@ -95,7 +100,7 @@ public sealed class InscricaoService(ApplicationDbContext db)
 
         return inscricoes.Select(item => new MinhaInscricaoResponse(
             item.Id, item.Status, ToUtcOffset(item.CriadaEmUtc), ToUtcOffset(item.AtualizadaEmUtc),
-            item.AtividadeId, item.Atividade.Tipo, item.Atividade.Tema, ToUtcOffset(item.Atividade.DataHoraUtc),
+            item.AtividadeId, item.Atividade.Tipo, string.IsNullOrWhiteSpace(item.Atividade.Titulo) ? item.Atividade.Tema : item.Atividade.Titulo, ToUtcOffset(item.Atividade.DataHoraUtc),
             item.Atividade.Local, item.Atividade.Status,
             item.Atividade.Sala is { } sala ? new(sala.Id, sala.Nome, sala.Tipo, sala.Capacidade) : null,
             item.Assento is { } assento ? new(assento.Id, assento.Codigo, assento.Fileira, assento.Coluna) : null,
@@ -122,7 +127,7 @@ public sealed class InscricaoService(ApplicationDbContext db)
 public enum SituacaoInscricao
 {
     Criada, AlunoInexistente, AtividadeInexistente, AssentoInvalido, AtividadeCancelada,
-    AlunoJaInscrito, AssentoOcupado, SemVagas, ConflitoConcorrencia
+    AlunoJaInscrito, AssentoOcupado, SemVagas, ConflitoConcorrencia, AtividadeEncerrada
 }
 
 public sealed record ReservarInscricaoResultado(SituacaoInscricao Situacao, InscricaoResponse? Inscricao = null);

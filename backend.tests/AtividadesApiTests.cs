@@ -3,8 +3,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using AprendizagemColaborativa.Api.Data;
-using AprendizagemColaborativa.Api.Models;
-using Microsoft.AspNetCore.Identity;
+using AprendizagemColaborativa.Api.Features.Atividades;
+using AprendizagemColaborativa.Api.Features.Auth;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,331 +12,114 @@ using Xunit;
 
 namespace AprendizagemColaborativa.Api.Tests;
 
-public sealed class AtividadesApiTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+// Reservas são exercitadas no serviço que publica após a aprovação; a política
+// HTTP da nova fila é coberta em PropostasApiTests.
+public sealed class AtividadesApiTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>, IAsyncLifetime
 {
-    [Fact]
-    public async Task Rotas_de_criacao_e_minhas_exigem_autenticacao()
+    private readonly HttpClient _client = factory.CreateClient();
+    private string _userId = null!;
+
+    public async Task InitializeAsync()
     {
-        using var client = factory.CreateClient();
-        using var create = await client.PostAsJsonAsync("/api/atividades", CreateRequest("DESKTOP"));
-        using var mine = await client.GetAsync("/api/atividades/minhas");
-
-        Assert.Equal(HttpStatusCode.Unauthorized, create.StatusCode);
-        Assert.Equal(HttpStatusCode.Unauthorized, mine.StatusCode);
+        var email = $"activity-{Guid.NewGuid():N}@example.test";
+        using var response = await _client.PostAsJsonAsync("/api/auth/register", new { name = "Aluno", email, course = "DSM", password = "Teste@123" });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        _userId = (await response.Content.ReadFromJsonAsync<StudentResponse>())!.Id;
+        using var login = await _client.PostAsJsonAsync("/api/auth/login", new { email, password = "Teste@123" });
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", (await login.Content.ReadFromJsonAsync<LoginResponse>())!.AccessToken);
     }
-
-    [Fact]
-    public async Task Tipos_de_sala_sao_publicos_e_expoem_capacidade()
+    private static CriarAtividadeRequest Request(string type = "DESKTOP", string theme = "Teste de horário", DateTimeOffset? date = null)
     {
-        using var client = factory.CreateClient();
-        using var response = await client.GetAsync("/api/salas/tipos");
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Contains(body.RootElement.EnumerateArray(), item =>
-            item.GetProperty("tipo").GetString() == "DESKTOP" && item.GetProperty("capacidade").GetInt32() == 24);
-        Assert.Contains(body.RootElement.EnumerateArray(), item =>
-            item.GetProperty("tipo").GetString() == "NOTEBOOK" && item.GetProperty("capacidade").GetInt32() == 20);
+        var start = date ?? DateTimeOffset.UtcNow.AddDays(120).AddMinutes(Random.Shared.Next(1, 10000));
+        return new(theme, "Atividade para teste.", "AULA", type, start.ToString("O"), start.AddHours(2).ToString("O"));
     }
-
-    [Fact]
-    public async Task Criar_atividade_retorna_sala_e_aparece_nas_listagens()
+    private async Task<CriarAtividadeResultado> Create(CriarAtividadeRequest request)
     {
-        var authenticated = await CreateAuthenticatedClientAsync();
-        try
-        {
-            var response = await authenticated.Client.PostAsJsonAsync("/api/atividades", CreateRequest("DESKTOP"));
-            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-
-            using var created = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            Assert.Equal("AULA", created.RootElement.GetProperty("modalidade").GetString());
-            Assert.Equal("DESKTOP", created.RootElement.GetProperty("sala").GetProperty("tipo").GetString());
-            Assert.Equal(24, created.RootElement.GetProperty("sala").GetProperty("capacidade").GetInt32());
-            Assert.True(created.RootElement.TryGetProperty("data", out _));
-            Assert.True(created.RootElement.TryGetProperty("inicio", out _));
-            Assert.True(created.RootElement.TryGetProperty("fim", out _));
-
-            using var filtered = await authenticated.Client.GetAsync("/api/atividades?tema=Teste%20de%20hor%C3%A1rio");
-            Assert.Equal(HttpStatusCode.OK, filtered.StatusCode);
-            using var filteredJson = JsonDocument.Parse(await filtered.Content.ReadAsStringAsync());
-            Assert.NotEmpty(filteredJson.RootElement.EnumerateArray());
-
-            using var mine = await authenticated.Client.GetAsync("/api/atividades/minhas");
-            Assert.Equal(HttpStatusCode.OK, mine.StatusCode);
-            using var mineJson = JsonDocument.Parse(await mine.Content.ReadAsStringAsync());
-            Assert.NotEmpty(mineJson.RootElement.EnumerateArray());
-        }
-        finally
-        {
-            await DeleteStudentAsync(authenticated.Email);
-            authenticated.Client.Dispose();
-        }
+        await using var scope = factory.Services.CreateAsyncScope();
+        var result = await scope.ServiceProvider.GetRequiredService<AtividadeService>().CriarAsync(request, _userId, CancellationToken.None);
+        return result;
     }
-
-    [Fact]
-    public async Task Criar_atividade_com_termino_igual_ao_inicio_retorna_bad_request()
+    [Fact] public async Task Rotas_exigem_autenticacao()
     {
-        var authenticated = await CreateAuthenticatedClientAsync();
-        try
-        {
-            var inicio = DateTimeOffset.UtcNow.AddDays(45).ToString("O");
-            var request = new
-            {
-                tema = "Teste de horário inválido",
-                descricao = "Validação do intervalo de reserva.",
-                modalidade = "AULA",
-                tipoSala = "DESKTOP",
-                inicio,
-                fim = inicio
-            };
-
-            using var response = await authenticated.Client.PostAsJsonAsync("/api/atividades", request);
-            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        }
-        finally
-        {
-            await DeleteStudentAsync(authenticated.Email);
-            authenticated.Client.Dispose();
-        }
+        using var anon = factory.CreateClient();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anon.PostAsJsonAsync("/api/propostas", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anon.GetAsync("/api/propostas/minhas")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anon.GetAsync("/api/atividades")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anon.GetAsync($"/api/atividades/{Guid.NewGuid()}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anon.GetAsync($"/api/atividades/{Guid.NewGuid()}/assentos")).StatusCode);
     }
-
-    [Fact]
-    public async Task Criar_atividade_rejeita_modalidade_tipo_de_sala_e_data_invalidos()
+    [Fact] public async Task Tipos_de_sala_sao_publicos()
     {
-        var authenticated = await CreateAuthenticatedClientAsync();
-        try
-        {
-            var invalid = new
-            {
-                tema = "Dados inválidos", descricao = "Validações da atividade.", modalidade = "CURSO",
-                tipoSala = "AUDITORIO", inicio = "2032-01-15T14:00:00", fim = "2032-01-15T16:00:00"
-            };
-
-            using var response = await authenticated.Client.PostAsJsonAsync("/api/atividades", invalid);
-            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-            using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            var errors = body.RootElement.GetProperty("errors");
-            Assert.True(errors.TryGetProperty("modalidade", out _));
-            Assert.True(errors.TryGetProperty("tipoSala", out _));
-            Assert.True(errors.TryGetProperty("inicio", out _));
-            Assert.True(errors.TryGetProperty("fim", out _));
-        }
-        finally
-        {
-            await DeleteStudentAsync(authenticated.Email);
-            authenticated.Client.Dispose();
-        }
+        using var anon = factory.CreateClient();
+        using var json = JsonDocument.Parse(await anon.GetStringAsync("/api/salas/tipos"));
+        Assert.Contains(json.RootElement.EnumerateArray(), x => x.GetProperty("tipo").GetString() == "DESKTOP" && x.GetProperty("capacidade").GetInt32() == 24);
+        Assert.Contains(json.RootElement.EnumerateArray(), x => x.GetProperty("tipo").GetString() == "NOTEBOOK" && x.GetProperty("capacidade").GetInt32() == 20);
     }
-
-    [Fact]
-    public async Task Horarios_encostados_nao_sao_conflitantes()
+    [Fact] public async Task Publicacao_reserva_sala_e_aparece_no_catalogo()
     {
-        var authenticated = await CreateAuthenticatedClientAsync();
-        try
-        {
-            var inicio = new DateTimeOffset(2033, 1, 15, 14, 0, 0, TimeSpan.Zero);
-            var firstRequest = new
-            {
-                tema = "Primeiro horário", descricao = "Reserva até as dezesseis horas.", modalidade = "AULA", tipoSala = "NOTEBOOK",
-                inicio = inicio.ToString("O"), fim = inicio.AddHours(2).ToString("O")
-            };
-            var secondRequest = new
-            {
-                tema = "Segundo horário", descricao = "Reserva iniciada quando a anterior termina.", modalidade = "AULA", tipoSala = "NOTEBOOK",
-                inicio = inicio.AddHours(2).ToString("O"), fim = inicio.AddHours(4).ToString("O")
-            };
-
-            using var first = await authenticated.Client.PostAsJsonAsync("/api/atividades", firstRequest);
-            using var second = await authenticated.Client.PostAsJsonAsync("/api/atividades", secondRequest);
-            Assert.Equal(HttpStatusCode.Created, first.StatusCode);
-            Assert.Equal(HttpStatusCode.Created, second.StatusCode);
-        }
-        finally
-        {
-            await DeleteStudentAsync(authenticated.Email);
-            authenticated.Client.Dispose();
-        }
+        var activity = (await Create(Request())).Atividade!;
+        Assert.Equal("DESKTOP", activity.Sala.Tipo); Assert.Equal(24, activity.Sala.Capacidade);
+        using var json = JsonDocument.Parse(await _client.GetStringAsync("/api/atividades?tema=Teste"));
+        Assert.Contains(json.RootElement.EnumerateArray(), x => x.GetProperty("id").GetGuid() == activity.Id);
     }
-
-    [Fact]
-    public async Task Consulta_de_atividade_valida_o_identificador_e_distingue_ausencia()
+    [Fact] public void Valida_dados_e_intervalos()
     {
-        using var client = factory.CreateClient();
-        using var invalid = await client.GetAsync("/api/atividades/invalido");
-        using var absent = await client.GetAsync($"/api/atividades/{Guid.NewGuid()}");
-
-        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, absent.StatusCode);
+        using var scope = factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<AtividadeService>();
+        var request = new CriarAtividadeRequest("Tema", "Descrição", "CURSO", "AUDITORIO", "2032-01-15T14:00:00", "2032-01-15T16:00:00");
+        var errors = service.Validar(request);
+        Assert.Contains("modalidade", errors.Keys); Assert.Contains("tipoSala", errors.Keys); Assert.Contains("inicio", errors.Keys); Assert.Contains("fim", errors.Keys);
+        var start = DateTimeOffset.UtcNow.AddDays(2).ToString("O");
+        Assert.Contains("fim", service.Validar(Request() with { Inicio = start, Fim = start }).Keys);
     }
-
-    [Fact]
-    public async Task Criar_atividades_no_mesmo_horario_retorna_conflito()
+    [Fact] public async Task Horarios_iguais_conflitam_e_encostados_sao_permitidos()
     {
-        var authenticated = await CreateAuthenticatedClientAsync();
-        try
-        {
-            var request = CreateRequest("NOTEBOOK");
-            using var first = await authenticated.Client.PostAsJsonAsync("/api/atividades", request);
-            using var second = await authenticated.Client.PostAsJsonAsync("/api/atividades", request);
-
-            Assert.Equal(HttpStatusCode.Created, first.StatusCode);
-            Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
-        }
-        finally
-        {
-            await DeleteStudentAsync(authenticated.Email);
-            authenticated.Client.Dispose();
-        }
+        var start = DateTimeOffset.UtcNow.AddDays(500).AddMinutes(Random.Shared.Next(10000));
+        var first = Request("NOTEBOOK", date: start);
+        Assert.NotNull((await Create(first)).Atividade);
+        Assert.True((await Create(first)).SalaIndisponivel);
+        Assert.NotNull((await Create(Request("NOTEBOOK", date: start.AddHours(2)))).Atividade);
     }
-
-    [Fact]
-    public async Task Criar_atividades_simultaneas_no_mesmo_horario_cria_apenas_uma()
+    [Fact] public async Task Reservas_simultaneas_permitidas_apenas_uma_para_mesma_sala()
     {
-        var authenticated = await CreateAuthenticatedClientAsync();
-        try
-        {
-            var request = CreateRequest("DESKTOP");
-            var responses = await Task.WhenAll(
-                authenticated.Client.PostAsJsonAsync("/api/atividades", request),
-                authenticated.Client.PostAsJsonAsync("/api/atividades", request));
-            try
-            {
-                Assert.Equal(1, responses.Count(response => response.StatusCode == HttpStatusCode.Created));
-                Assert.Equal(1, responses.Count(response => response.StatusCode == HttpStatusCode.Conflict));
-            }
-            finally
-            {
-                foreach (var response in responses)
-                {
-                    response.Dispose();
-                }
-            }
-        }
-        finally
-        {
-            await DeleteStudentAsync(authenticated.Email);
-            authenticated.Client.Dispose();
-        }
+        var request = Request();
+        var results = await Task.WhenAll(Create(request), Create(request));
+        Assert.Single(results, x => x.Atividade is not null); Assert.Single(results, x => x.SalaIndisponivel);
     }
-
     [Theory]
     [InlineData("teste de horário")]
     [InlineData("%_\\")]
-    public async Task Busca_por_tema_ignora_caixa_e_trata_curingas_como_texto(string filtro)
+    public async Task Busca_ignora_caixa_e_trata_curingas_como_texto(string filter)
     {
-        var authenticated = await CreateAuthenticatedClientAsync();
-        try
-        {
-            using var response = await authenticated.Client.PostAsJsonAsync("/api/atividades",
-                CreateRequest("DESKTOP", "Teste de horário %_\\"));
-            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-            using var created = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            var id = created.RootElement.GetProperty("id").GetGuid();
-
-            using var filtered = await authenticated.Client.GetAsync($"/api/atividades?tema={Uri.EscapeDataString(filtro)}");
-            Assert.Equal(HttpStatusCode.OK, filtered.StatusCode);
-            using var result = JsonDocument.Parse(await filtered.Content.ReadAsStringAsync());
-            Assert.Contains(result.RootElement.EnumerateArray(), item => item.GetProperty("id").GetGuid() == id);
-            Assert.All(result.RootElement.EnumerateArray(), item =>
-                Assert.Contains(filtro, item.GetProperty("tema").GetString()!, StringComparison.OrdinalIgnoreCase));
-        }
-        finally
-        {
-            await DeleteStudentAsync(authenticated.Email);
-            authenticated.Client.Dispose();
-        }
+        var activity = (await Create(Request(theme: "Teste de horário %_\\"))).Atividade!;
+        using var json = JsonDocument.Parse(await _client.GetStringAsync($"/api/atividades?tema={Uri.EscapeDataString(filter)}"));
+        Assert.Contains(json.RootElement.EnumerateArray(), x => x.GetProperty("id").GetGuid() == activity.Id);
+        Assert.All(json.RootElement.EnumerateArray(), x => Assert.Contains(filter, x.GetProperty("tema").GetString()!, StringComparison.OrdinalIgnoreCase));
     }
-
-    [Fact]
-    public async Task Atividade_cancelada_nao_aparece_no_catalogo_e_libera_a_sala()
+    [Fact] public async Task Cancelamento_remove_do_catalogo_e_libera_sala()
     {
-        var authenticated = await CreateAuthenticatedClientAsync();
-        try
+        var request = Request(theme: "Atividade cancelada");
+        var activity = (await Create(request)).Atividade!;
+        await using (var scope = factory.Services.CreateAsyncScope())
         {
-            var request = CreateRequest("DESKTOP", "Atividade cancelada");
-            using var first = await authenticated.Client.PostAsJsonAsync("/api/atividades", request);
-            Assert.Equal(HttpStatusCode.Created, first.StatusCode);
-            using var created = JsonDocument.Parse(await first.Content.ReadAsStringAsync());
-            var activityId = created.RootElement.GetProperty("id").GetGuid();
-
-            using (var scope = factory.Services.CreateScope())
-            {
-                var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                var activity = await db.Atividades.SingleAsync(item => item.Id == activityId);
-                activity.Status = "cancelada";
-                await db.SaveChangesAsync();
-            }
-
-            using var catalog = await authenticated.Client.GetAsync("/api/atividades?tema=Atividade%20cancelada");
-            Assert.Equal(HttpStatusCode.OK, catalog.StatusCode);
-            using var catalogJson = JsonDocument.Parse(await catalog.Content.ReadAsStringAsync());
-            Assert.DoesNotContain(catalogJson.RootElement.EnumerateArray(), item =>
-                item.GetProperty("id").GetGuid() == activityId);
-
-            using var replacement = await authenticated.Client.PostAsJsonAsync("/api/atividades", request);
-            Assert.Equal(HttpStatusCode.Created, replacement.StatusCode);
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            (await db.Atividades.FindAsync(activity.Id))!.Status = "cancelada"; await db.SaveChangesAsync();
         }
-        finally
-        {
-            await DeleteStudentAsync(authenticated.Email);
-            authenticated.Client.Dispose();
-        }
+        using var json = JsonDocument.Parse(await _client.GetStringAsync("/api/atividades?tema=Atividade%20cancelada"));
+        Assert.DoesNotContain(json.RootElement.EnumerateArray(), x => x.GetProperty("id").GetGuid() == activity.Id);
+        Assert.NotNull((await Create(request)).Atividade);
     }
-
-    private static object CreateRequest(string tipoSala, string tema = "Teste de horário")
+    [Fact] public async Task Detalhe_valida_identificador()
     {
-        var inicio = DateTimeOffset.UtcNow.AddDays(60).AddMinutes(Random.Shared.Next(1, 10_000));
-        return new
-        {
-            tema,
-            descricao = "Atividade usada na validação de reserva de sala.",
-            modalidade = "AULA",
-            tipoSala,
-            inicio = inicio.ToString("O"),
-            fim = inicio.AddHours(2).ToString("O")
-        };
+        Assert.Equal(HttpStatusCode.BadRequest, (await _client.GetAsync("/api/atividades/invalido")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync($"/api/atividades/{Guid.NewGuid()}")).StatusCode);
     }
-
-    private async Task<(HttpClient Client, string Email)> CreateAuthenticatedClientAsync()
+    public async Task DisposeAsync()
     {
-        var client = factory.CreateClient();
-        var email = $"activity-{Guid.NewGuid():N}@example.test";
-        var registration = new
-        {
-            name = "Leonardo Responsável",
-            email,
-            course = "Desenvolvimento de Software Multiplataforma",
-            password = "Fatec!Teste2026"
-        };
-
-        using var register = await client.PostAsJsonAsync("/api/auth/register", registration);
-        Assert.Equal(HttpStatusCode.Created, register.StatusCode);
-        using var login = await client.PostAsJsonAsync("/api/auth/login", new { email, password = registration.password });
-        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
-        using var json = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
-        var token = json.RootElement.GetProperty("accessToken").GetString();
-        Assert.False(string.IsNullOrWhiteSpace(token));
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        return (client, email);
-    }
-
-    private async Task DeleteStudentAsync(string email)
-    {
-        using var scope = factory.Services.CreateScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var users = scope.ServiceProvider.GetRequiredService<UserManager<Aluno>>();
-        var student = await users.FindByEmailAsync(email);
-        if (student is null)
-        {
-            return;
-        }
-
-        var activities = await db.Atividades
-            .Where(atividade => atividade.ResponsavelId == student.Id || atividade.OrganizadorId == student.Id)
-            .ToListAsync();
-        db.Atividades.RemoveRange(activities);
-        await db.SaveChangesAsync();
-        var result = await users.DeleteAsync(student);
-        Assert.True(result.Succeeded, string.Join("; ", result.Errors.Select(error => error.Code)));
+        db.Atividades.RemoveRange(await db.Atividades.Where(x => x.OrganizadorId == _userId).ToListAsync()); await db.SaveChangesAsync();
+        var user = await db.Users.FindAsync(_userId); if (user is not null) { db.Users.Remove(user); await db.SaveChangesAsync(); }
+        _client.Dispose();
     }
 }

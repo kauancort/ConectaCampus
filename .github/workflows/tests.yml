@@ -1,0 +1,89 @@
+name: Testes
+on: [push, pull_request]
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: conectacampus_tests
+          POSTGRES_USER: conectacampus_tests
+          POSTGRES_PASSWORD: localtestpassword
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U conectacampus_tests -d conectacampus_tests"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      ConnectionStrings__DefaultConnection: Host=127.0.0.1;Port=5432;Database=conectacampus_tests;Username=conectacampus_tests;Password=localtestpassword;SSL Mode=Disable
+      JWT_ISSUER: ConectaCampus.Tests
+      JWT_AUDIENCE: ConectaCampus.Tests
+      JWT_SIGNING_KEY: test-only-signing-key-with-at-least-32-bytes
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet test backend.tests/AprendizagemColaborativa.Api.Tests.csproj
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+  navegador:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: conectacampus_e2e
+          POSTGRES_USER: conectacampus_e2e
+          POSTGRES_PASSWORD: local_e2e_password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U conectacampus_e2e -d conectacampus_e2e"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      ConnectionStrings__DefaultConnection: Host=127.0.0.1;Port=5432;Database=conectacampus_e2e;Username=conectacampus_e2e;Password=local_e2e_password;SSL Mode=Disable
+      E2E_DATABASE_URL: postgres://conectacampus_e2e:local_e2e_password@127.0.0.1:5432/conectacampus_e2e
+      JWT_ISSUER: ConectaCampus.E2E
+      JWT_AUDIENCE: ConectaCampus.E2E
+      JWT_SIGNING_KEY: test-only-signing-key-with-at-least-32-bytes
+      ASPNETCORE_URLS: http://127.0.0.1:5077
+      ASPNETCORE_ENVIRONMENT: Development
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: dotnet run --project backend/AprendizagemColaborativa.Api.csproj > /tmp/conectacampus-api.log 2>&1 &
+      - run: |
+          for i in {1..90}; do curl -fsS http://127.0.0.1:5077/health && exit 0; sleep 1; done
+          cat /tmp/conectacampus-api.log
+          exit 1
+      - run: npm run test:e2e
+        working-directory: frontend
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: navegador-resultados
+          path: frontend/test-results/

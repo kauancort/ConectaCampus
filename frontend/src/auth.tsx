@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ApiError, apiRequest, type Student } from './api'
 
 interface AuthContextValue {
@@ -7,6 +7,7 @@ interface AuthContextValue {
   signIn: (token: string, student: Student) => void
   signOut: () => void
   api: <T,>(path: string, init?: RequestInit) => Promise<T>
+  refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -22,7 +23,7 @@ function storedStudent(): Student | null {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('ac-token'))
-  const [student, setStudent] = useState<Student | null>(storedStudent)
+  const [student, setStudent] = useState<Student | null>(() => localStorage.getItem('ac-token') ? storedStudent() : null)
 
   const signOut = useCallback(() => {
     localStorage.removeItem('ac-token')
@@ -47,7 +48,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [token, signOut])
 
-  const value = useMemo(() => ({ token, student, signIn, signOut, api }), [token, student, signIn, signOut, api])
+  const refreshProfile = useCallback(async () => {
+    if (!token) return
+    const profile = await api<Student>('/api/auth/me')
+    setStudent(profile)
+    localStorage.setItem('ac-student', JSON.stringify(profile))
+  }, [api, token])
+
+  useEffect(() => { if (token) void refreshProfile().catch(() => {}) }, [token, refreshProfile])
+  const value = useMemo(() => ({ token, student, signIn, signOut, api, refreshProfile }), [token, student, signIn, signOut, api, refreshProfile])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 

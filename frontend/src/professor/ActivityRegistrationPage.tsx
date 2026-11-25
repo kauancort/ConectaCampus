@@ -1,3 +1,4 @@
+import SiteFooter from '../SiteFooter'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth'
@@ -250,7 +251,7 @@ export default function ActivityRegistrationPage() {
     <main className="main-content professor-content">
       <div className="heading">
         <div>
-          <p className="eyebrow">ATIVIDADES ACADÊMICAS</p>
+
           <h1>Cadastrar atividade</h1>
           <p className="subtitle">Informe os dados para reservar uma sala e publicar a atividade.</p>
         </div>
@@ -366,6 +367,6 @@ export default function ActivityRegistrationPage() {
       </section>
     </main>
 
-    <footer>ConectaCampus · Fatec Shunji Nishimura de Pompeia</footer>
+    <SiteFooter />
   </div>
 }

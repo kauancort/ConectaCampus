@@ -3,6 +3,8 @@ export interface Student {
   name: string
   email: string
   course: string
+  professor?: boolean
+  podeMinistrar?: boolean
 }
 
 export interface LoginResponse {
@@ -29,6 +31,10 @@ export interface Activity {
   inicio: string
   fim: string
   status: 'publicada' | 'cancelada' | string
+  nomeProfessor?: string | null
+  nomeMinistrante?: string | null
+  titulo?: string
+  lugaresDisponiveis?: number
 }
 
 export interface Seat {
@@ -49,6 +55,8 @@ export interface SeatMap {
   capacidadeTotal: number
   lugaresDisponiveis: number
   assentos: Seat[]
+  jaInscrito?: boolean
+  meuAssentoId?: string | null
 }
 
 export interface ReservedSeat {
@@ -78,7 +86,7 @@ export interface Enrollment {
 const apiBaseUrl = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
 export class ApiError extends Error {
-  constructor(readonly status: number, message: string) {
+  constructor(readonly status: number, message: string, readonly errors: Record<string, string[]> = {}) {
     super(message)
     this.name = 'ApiError'
   }
@@ -94,7 +102,10 @@ function responseMessage(status: number, payload: unknown): string {
     }
     return 'Os dados enviados são inválidos. Confira os campos e tente novamente.'
   }
-  if (status === 401) return 'Sua sessão expirou ou você precisa entrar para continuar.'
+  if (status === 401) {
+    if (payload && typeof payload === 'object' && 'message' in payload && typeof payload.message === 'string') return payload.message
+    return 'Sua sessão expirou ou você precisa entrar para continuar.'
+  }
   if (status === 403) return 'Você não tem permissão para realizar esta ação.'
   if (status === 404) return 'O item solicitado não foi encontrado.'
   if (status === 409) {
@@ -128,7 +139,11 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}, token?
   if (response.status === 204) return undefined as T
   const text = await response.text()
   const payload = text ? parseJson(text) : null
-  if (!response.ok) throw new ApiError(response.status, responseMessage(response.status, payload))
+  if (!response.ok) {
+    const errors = payload && typeof payload === 'object' && 'errors' in payload && payload.errors && typeof payload.errors === 'object'
+      ? payload.errors as Record<string, string[]> : {}
+    throw new ApiError(response.status, responseMessage(response.status, payload), errors)
+  }
   return payload as T
 }
 

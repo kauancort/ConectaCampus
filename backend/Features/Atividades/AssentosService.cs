@@ -11,14 +11,17 @@ public sealed class AssentosService(ApplicationDbContext db)
             .Include(atividade => atividade.Sala).ThenInclude(sala => sala!.Assentos)
             .SingleOrDefaultAsync(atividade => atividade.Id == atividadeId, cancellationToken);
 
-    public async Task<MapaAssentosResponse> ConsultarAsync(Atividade atividade, CancellationToken cancellationToken)
+    public async Task<MapaAssentosResponse> ConsultarAsync(Atividade atividade, string alunoId, CancellationToken cancellationToken)
     {
         var ocupados = await db.Inscricoes.AsNoTracking()
             .Where(inscricao => inscricao.AtividadeId == atividade.Id &&
                 inscricao.Status == "ativa" && inscricao.AssentoId != null)
             .Select(inscricao => inscricao.AssentoId!.Value)
             .ToListAsync(cancellationToken);
-        return CriarMapa(atividade, ocupados);
+        var minhaInscricao = await db.Inscricoes.AsNoTracking()
+            .Where(i => i.AtividadeId == atividade.Id && i.AlunoId == alunoId && i.Status == "ativa")
+            .Select(i => new { i.AssentoId }).SingleOrDefaultAsync(cancellationToken);
+        return CriarMapa(atividade, ocupados) with { JaInscrito = minhaInscricao is not null, MeuAssentoId = minhaInscricao?.AssentoId };
     }
 
     public static MapaAssentosResponse CriarMapa(Atividade atividade, IEnumerable<Guid> assentosOcupados)
@@ -30,7 +33,7 @@ public sealed class AssentosService(ApplicationDbContext db)
                 ocupados.Contains(assento.Id) ? "OCUPADO" : "DISPONIVEL"))
             .ToList();
         var inicio = ToUtcOffset(atividade.Inicio ?? atividade.DataHoraUtc);
-        return new(atividade.Id, atividade.Tema, DateOnly.FromDateTime(inicio.DateTime), inicio,
+        return new(atividade.Id, string.IsNullOrWhiteSpace(atividade.Titulo) ? atividade.Tema : atividade.Titulo, DateOnly.FromDateTime(inicio.DateTime), inicio,
             atividade.Fim is { } fim ? ToUtcOffset(fim) : null,
             new(sala.Id, sala.Nome, sala.Tipo, sala.Capacidade), sala.Capacidade,
             assentos.Count(assento => assento.Status == "DISPONIVEL"), assentos);

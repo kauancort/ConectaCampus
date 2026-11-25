@@ -116,6 +116,24 @@ public static class AuthEndpoints
             var student = await users.FindByIdAsync(studentId);
             return student is null ? Results.Unauthorized() : Results.Ok(ToResponse(student));
         }).RequireAuthorization();
+        group.MapPut("/me", async (UpdateProfileRequest? request, ClaimsPrincipal principal, UserManager<Aluno> users) =>
+        {
+            var id = principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
+            if (string.IsNullOrWhiteSpace(id)) return Results.Unauthorized();
+            var student = await users.FindByIdAsync(id);
+            if (student is null) return Results.Unauthorized();
+            var errors = new Dictionary<string, string[]>();
+            AddRequired(errors, "name", request?.Name);
+            AddRequired(errors, "course", request?.Course);
+            if (request?.Name?.Trim().Length > MaxNameLength) errors["name"] = [$"O nome deve ter no máximo {MaxNameLength} caracteres."];
+            if (request?.Course?.Trim().Length > MaxCourseLength) errors["course"] = [$"O curso deve ter no máximo {MaxCourseLength} caracteres."];
+            if (errors.Count > 0) return Results.ValidationProblem(errors);
+            student.Nome = request!.Name!.Trim();
+            student.Curso = request.Course!.Trim();
+            var result = await users.UpdateAsync(student);
+            if (!result.Succeeded) return Results.Conflict(new { message = "Não foi possível atualizar o perfil. Tente novamente." });
+            return Results.Ok(ToResponse(student));
+        }).RequireAuthorization();
     }
 
     private static Dictionary<string, string[]> ValidateRegister(RegisterRequest? request)
@@ -184,7 +202,7 @@ public static class AuthEndpoints
     }
 
     private static StudentResponse ToResponse(Aluno student) =>
-        new(student.Id, student.Nome, student.Email!, student.Curso);
+        new(student.Id, student.Nome, student.Email!, student.Curso, student.Professor, student.PodeMinistrar);
 
     private static string TranslateIdentityError(IdentityError error) => error.Code switch
     {

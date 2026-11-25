@@ -101,6 +101,32 @@ public sealed class AuthApiTests(WebApplicationFactory<Program> factory) : IClas
     }
 
     [Fact]
+    public async Task Atualizar_perfil_exige_sessao_valida_campos_e_preserva_permissoes()
+    {
+        var email = NewEmail();
+        try
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, (await _client.PutAsJsonAsync("/api/auth/me", new { name = "Novo", course = "DSM" })).StatusCode);
+            Assert.Equal(HttpStatusCode.Created, (await _client.PostAsJsonAsync("/api/auth/register", ValidRegistration(email))).StatusCode);
+            using var login = await _client.PostAsJsonAsync("/api/auth/login", new { email, password = TestPassword });
+            using var json = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", json.RootElement.GetProperty("accessToken").GetString());
+            Assert.Equal(HttpStatusCode.BadRequest, (await _client.PutAsJsonAsync("/api/auth/me", new { name = " ", course = "DSM" })).StatusCode);
+            var response = await _client.PutAsJsonAsync("/api/auth/me", new { name = "  Ada Souza  ", course = " Gestão ", email = "outra@example.test", professor = true, podeMinistrar = true });
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using var updated = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.Equal("Ada Souza", updated.RootElement.GetProperty("name").GetString());
+            Assert.Equal("Gestão", updated.RootElement.GetProperty("course").GetString());
+            Assert.Equal(email, updated.RootElement.GetProperty("email").GetString());
+            Assert.False(updated.RootElement.GetProperty("professor").GetBoolean());
+            Assert.False(updated.RootElement.GetProperty("podeMinistrar").GetBoolean());
+            using var me = await _client.GetFromJsonAsync<JsonDocument>("/api/auth/me");
+            Assert.Equal("Ada Souza", me!.RootElement.GetProperty("name").GetString());
+        }
+        finally { _client.DefaultRequestHeaders.Authorization = null; await DeleteStudentAsync(email); }
+    }
+
+    [Fact]
     public async Task Me_without_token_returns_unauthorized()
     {
         _client.DefaultRequestHeaders.Authorization = null;

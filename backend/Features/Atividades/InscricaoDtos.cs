@@ -15,7 +15,11 @@ public sealed record InscricaoParticipanteResponse(
     string NomeAluno,
     string Status,
     DateTimeOffset CriadaEmUtc,
-    DateTimeOffset AtualizadaEmUtc);
+    DateTimeOffset AtualizadaEmUtc,
+    bool? Presente,
+    AssentoReservadoResponse? Assento);
+
+public sealed record PresencaRequest(bool? Presente);
 
 public sealed record MinhaInscricaoResponse(
     Guid Id,

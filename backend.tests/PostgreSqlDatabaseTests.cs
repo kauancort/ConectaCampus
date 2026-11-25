@@ -17,8 +17,9 @@ public sealed class PostgreSqlDatabaseTests(WebApplicationFactory<Program> facto
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
         Assert.True((await client.GetAsync("/health")).IsSuccessStatusCode);
-        var migration = Assert.Single(await db.Database.GetAppliedMigrationsAsync());
-        Assert.EndsWith("_InitialPostgreSql", migration);
+        var migrations = await db.Database.GetAppliedMigrationsAsync();
+        Assert.Contains(migrations, migration => migration.EndsWith("_InitialPostgreSql"));
+        Assert.Contains(migrations, migration => migration.EndsWith("_AcessoProfessor"));
         Assert.Empty(await db.Database.GetPendingMigrationsAsync());
 
         await db.Database.MigrateAsync();

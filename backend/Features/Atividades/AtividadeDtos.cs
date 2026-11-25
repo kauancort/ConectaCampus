@@ -6,7 +6,8 @@ public sealed record CriarAtividadeRequest(
     string? Modalidade,
     string? TipoSala,
     string? Inicio,
-    string? Fim);
+    string? Fim,
+    string? Titulo = null);
 
 public sealed record TipoSalaResponse(string Tipo, int Capacidade);
 
@@ -21,7 +22,11 @@ public sealed record AtividadeResponse(
     DateOnly Data,
     DateTimeOffset Inicio,
     DateTimeOffset Fim,
-    string Status);
+    string Status,
+    string? NomeProfessor,
+    int LugaresDisponiveis,
+    string Titulo,
+    string? NomeMinistrante);
 
 public sealed record AtividadeRequest(
     string? Tipo,
