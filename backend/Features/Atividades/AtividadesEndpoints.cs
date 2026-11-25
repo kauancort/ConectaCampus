@@ -46,32 +46,9 @@ public static class AtividadesEndpoints
                 db.Notificacoes.AddRange(recipients.Where(recipient => recipient != userId).Distinct().Select(recipient => new Notificacao { UsuarioId = recipient, Mensagem = $"As informações da aula ‘{title}’ foram atualizadas." }));
                 await db.SaveChangesAsync();
             }
-<<<<<<< HEAD
             await transaction.CommitAsync();
             return Results.Ok(new { titulo = title, tema = theme, descricao = description });
         }).RequireAuthorization();
-=======
-
-            var responsavelId = principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
-            if (string.IsNullOrWhiteSpace(responsavelId))
-            {
-                return Results.Unauthorized();
-            }
-
-            var result = await service.CriarAsync(request!, responsavelId, cancellationToken);
-            if (result.ResponsavelInvalido)
-            {
-                return Results.Unauthorized();
-            }
-
-            if (result.SalaIndisponivel)
-            {
-                return Results.Conflict(new { message = "Não há sala disponível no período solicitado." });
-            }
-
-            return Results.Created($"/api/atividades/{result.Atividade!.Id}", result.Atividade);
-        }).RequireAuthorization("Professor");
->>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
 
         group.MapGet("", async (
             string? tema,
@@ -101,7 +78,7 @@ public static class AtividadesEndpoints
 
             var atividades = await repository.ListarDoResponsavelAsync(responsavelId, cancellationToken);
             return Results.Ok(atividades.Select(service.ToResponse));
-        }).RequireAuthorization("Professor");
+        }).RequireAuthorization();
 
         group.MapPost("/{id:guid}/cancelar", async (Guid id, ClaimsPrincipal principal, ApplicationDbContext db) =>
         {

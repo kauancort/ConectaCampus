@@ -40,6 +40,8 @@ public sealed class AcessoProfessorApiTests(WebApplicationFactory<Program> facto
                 var user = (await db.Users.FindAsync(ids[1]))!; user.Professor = true; await db.SaveChangesAsync();
             }
             Assert.Equal(HttpStatusCode.Forbidden, (await aluno.GetAsync("/api/acesso-professor")).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await aluno.GetAsync("/api/atividades/minhas")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await professor.GetAsync("/api/atividades/minhas")).StatusCode);
             Assert.Equal(HttpStatusCode.Unauthorized, (await publicClient.GetAsync("/api/professor/alunos")).StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, (await aluno.GetAsync("/api/professor/alunos")).StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, (await aluno.GetAsync($"/api/professor/alunos/{ids[1]}")).StatusCode);

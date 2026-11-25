@@ -54,19 +54,15 @@ Os testes de integração verificam o mapa autenticado sem dados pessoais, o iso
 entre atividades, autenticação, uso do aluno do token, consulta das próprias inscrições,
 assentos inválidos, duplicidade, concorrência, cancelamento e reinscrição. Também provocam
 uma violação real do índice único para verificar HTTP 409 e rollback da transação.
-<<<<<<< HEAD
 Os testes existentes incluem ainda autenticação, permissões, solicitações, notificações, concorrência e migrações PostgreSQL.
-=======
-Somados aos testes existentes, unitários, de migração PostgreSQL e de perfis de conta, são 58 casos.
->>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
 Os casos adicionais validam reaplicação das migrations sem duplicar o seed, isolamento
 das tabelas/Identity em schema privado e filtros por tema sem distinguir maiúsculas,
 com `%`, `_` e `\` tratados como texto literal.
 
 Os testes de conta verificam cadastro, login e perfil de aluno/professor, a claim `account_type`
-no JWT, a rejeição de tipos inválidos e o HTTP 403 para alunos nas rotas de criação e listagem
-de atividades do professor. Os testes de atividades cadastram os responsáveis como professores;
-as inscrições continuam usando a autenticação existente.
+no JWT e a rejeição de tipos inválidos. O tipo informado no cadastro não concede permissão
+de professor: a listagem exige a permissão verificada no banco e a publicação segue o fluxo
+de propostas e aprovação. As inscrições continuam usando a autenticação existente.
 
 A suíte também verifica HTTP 401 sem token, rejeição de JWT com claim adulterada, tentativa
 de trocar o perfil pelo corpo do login e novo cadastro com e-mail existente e outro perfil.

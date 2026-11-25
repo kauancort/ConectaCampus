@@ -17,15 +17,10 @@ public sealed class PostgreSqlDatabaseTests(WebApplicationFactory<Program> facto
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
         Assert.True((await client.GetAsync("/health")).IsSuccessStatusCode);
-<<<<<<< HEAD
         var migrations = await db.Database.GetAppliedMigrationsAsync();
         Assert.Contains(migrations, migration => migration.EndsWith("_InitialPostgreSql"));
         Assert.Contains(migrations, migration => migration.EndsWith("_AcessoProfessor"));
-=======
-        var migrations = (await db.Database.GetAppliedMigrationsAsync()).ToList();
-        Assert.Contains(migrations, migration => migration.EndsWith("_InitialPostgreSql", StringComparison.Ordinal));
-        Assert.Contains(migrations, migration => migration.EndsWith("_AddAccountTypes", StringComparison.Ordinal));
->>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
+        Assert.Contains(migrations, migration => migration.EndsWith("_AddAccountTypes"));
         Assert.Empty(await db.Database.GetPendingMigrationsAsync());
 
         await db.Database.MigrateAsync();

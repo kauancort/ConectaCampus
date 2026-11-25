@@ -12,14 +12,10 @@ using Xunit;
 
 namespace AprendizagemColaborativa.Api.Tests;
 
-<<<<<<< HEAD
 // Reservas são exercitadas no serviço que publica após a aprovação; a política
 // HTTP da nova fila é coberta em PropostasApiTests.
-public sealed class AtividadesApiTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>, IAsyncLifetime
-=======
 [Collection(ApiIntegrationCollection.Name)]
-public sealed class AtividadesApiTests(WebApplicationFactory<Program> factory)
->>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
+public sealed class AtividadesApiTests(WebApplicationFactory<Program> factory) : IAsyncLifetime
 {
     private readonly HttpClient _client = factory.CreateClient();
     private string _userId = null!;
@@ -121,35 +117,7 @@ public sealed class AtividadesApiTests(WebApplicationFactory<Program> factory)
     }
     public async Task DisposeAsync()
     {
-<<<<<<< HEAD
         await using var scope = factory.Services.CreateAsyncScope();
-=======
-        var client = factory.CreateClient();
-        var email = $"activity-{Guid.NewGuid():N}@example.test";
-        var registration = new
-        {
-            name = "Leonardo Responsável",
-            email,
-            course = "Desenvolvimento de Software Multiplataforma",
-            accountType = "professor",
-            password = "Fatec!Teste2026"
-        };
-
-        using var register = await client.PostAsJsonAsync("/api/auth/register", registration);
-        Assert.Equal(HttpStatusCode.Created, register.StatusCode);
-        using var login = await client.PostAsJsonAsync("/api/auth/login", new { email, password = registration.password });
-        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
-        using var json = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
-        var token = json.RootElement.GetProperty("accessToken").GetString();
-        Assert.False(string.IsNullOrWhiteSpace(token));
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        return (client, email);
-    }
-
-    private async Task DeleteStudentAsync(string email)
-    {
-        using var scope = factory.Services.CreateScope();
->>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         db.Atividades.RemoveRange(await db.Atividades.Where(x => x.OrganizadorId == _userId).ToListAsync()); await db.SaveChangesAsync();
         var user = await db.Users.FindAsync(_userId); if (user is not null) { db.Users.Remove(user); await db.SaveChangesAsync(); }

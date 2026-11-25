@@ -210,11 +210,7 @@ public static class AuthEndpoints
     }
 
     private static StudentResponse ToResponse(Aluno student) =>
-<<<<<<< HEAD
-        new(student.Id, student.Nome, student.Email!, student.Curso, student.Professor, student.PodeMinistrar);
-=======
-        new(student.Id, student.Nome, student.Email!, student.Curso, student.TipoConta);
->>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
+        new(student.Id, student.Nome, student.Email!, student.Curso, student.Professor, student.PodeMinistrar, student.TipoConta);
 
     private static string TranslateIdentityError(IdentityError error) => error.Code switch
     {

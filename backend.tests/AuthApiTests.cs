@@ -167,11 +167,14 @@ public sealed class AuthApiTests(WebApplicationFactory<Program> factory)
             Assert.Equal(HttpStatusCode.OK, me.StatusCode);
             using var profile = JsonDocument.Parse(await me.Content.ReadAsStringAsync());
             Assert.Equal(accountType, profile.RootElement.GetProperty("accountType").GetString());
+            Assert.False(profile.RootElement.GetProperty("professor").GetBoolean());
 
+            // O tipo informado no cadastro não concede a permissão de professor.
+            // A publicação ocorre pelo fluxo de propostas e aprovação.
             using var create = await _client.PostAsJsonAsync("/api/atividades", new { });
-            Assert.Equal(accountType == "professor" ? HttpStatusCode.BadRequest : HttpStatusCode.Forbidden, create.StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, create.StatusCode);
             using var activities = await _client.GetAsync("/api/atividades/minhas");
-            Assert.Equal(accountType == "professor" ? HttpStatusCode.OK : HttpStatusCode.Forbidden, activities.StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, activities.StatusCode);
         }
         finally
         {

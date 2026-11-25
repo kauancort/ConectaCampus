@@ -3,12 +3,9 @@ export interface Student {
   name: string
   email: string
   course: string
-<<<<<<< HEAD
   professor?: boolean
   podeMinistrar?: boolean
-=======
-  accountType: 'aluno' | 'professor'
->>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
+  accountType?: 'aluno' | 'professor'
 }
 
 export interface LoginResponse {

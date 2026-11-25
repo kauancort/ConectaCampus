@@ -1,14 +1,8 @@
-<<<<<<< HEAD
 import SiteFooter from './SiteFooter'
 import Pagination, { usePagination } from './Pagination'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ApiError, type Activity, type Enrollment, type Seat, type SeatMap } from './api'
-=======
-import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ApiError, apiRequest, type Activity, type Enrollment, type LoginResponse, type Seat, type SeatMap } from './api'
->>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
 import { useAuth } from './auth'
 import AuthForm from './AuthForm'
 import SiteHeader from './SiteHeader'
@@ -43,18 +37,11 @@ function titleCase(value: string) {
 }
 
 export default function App() {
-<<<<<<< HEAD
   const { token, student, signIn, api } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const [page, setPage] = useState<Page>(() => location.pathname === '/inscricoes' ? 'inscricoes' : ['/entrar', '/cadastro'].includes(location.pathname) ? 'conta' : 'catalogo')
   const [authMode, setAuthMode] = useState<'login' | 'register'>(() => location.pathname === '/cadastro' ? 'register' : 'login')
-=======
-  const { token, student, signIn, signOut, api } = useAuth()
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [page, setPage] = useState<Page>(location.pathname === '/login' ? 'conta' : 'catalogo')
->>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
   const [activities, setActivities] = useState<Activity[]>([])
   const [theme, setTheme] = useState('')
   const [catalogLoading, setCatalogLoading] = useState(true)
@@ -67,12 +54,6 @@ export default function App() {
   const [seatMap, setSeatMap] = useState<SeatMap | null>(null)
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null)
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
-<<<<<<< HEAD
-=======
-  const [authMode, setAuthMode] = useState<'login' | 'aluno' | 'professor'>('login')
-  const [authSubmitting, setAuthSubmitting] = useState(false)
-  const [authForm, setAuthForm] = useState({ name: '', email: '', course: '', password: '' })
->>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [returnToSeat, setReturnToSeat] = useState(false)
@@ -123,7 +104,6 @@ export default function App() {
   }
 
   useEffect(() => {
-<<<<<<< HEAD
     if (token) void loadCatalog('', false)
     else { setActivities([]); setSelected(null); setSeatMap(null); setSelectedSeat(null); setCatalogLoading(false) }
   }, [token])
@@ -131,13 +111,6 @@ export default function App() {
     if (location.pathname === '/inscricoes') setPage('inscricoes')
     else if (location.pathname === '/entrar' || location.pathname === '/cadastro') { setAuthMode(location.pathname === '/cadastro' ? 'register' : 'login'); setPage('conta') }
     else if (location.pathname === '/') setPage('catalogo')
-=======
-    if (location.pathname !== '/login') void loadCatalog('')
-  }, [location.pathname])
-  useEffect(() => {
-    if (location.pathname === '/login') setPage('conta')
-    else setPage(current => current === 'conta' ? 'catalogo' : current)
->>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
   }, [location.pathname])
   useEffect(() => {
     if (token) void loadEnrollments(false)
@@ -167,40 +140,6 @@ export default function App() {
     await loadSeatMap(selected.id)
   }
 
-<<<<<<< HEAD
-=======
-  const submitAuth = async (event: FormEvent) => {
-    event.preventDefault()
-    if (authSubmitting) return
-    setAuthSubmitting(true)
-    clearFeedback()
-    try {
-      if (authMode !== 'login') {
-        await apiRequest('/api/auth/register', {
-          method: 'POST',
-          body: JSON.stringify({ name: authForm.name, email: authForm.email, course: authForm.course, password: authForm.password, accountType: authMode }),
-        })
-        setAuthMode('login')
-        setAuthForm(current => ({ ...current, password: '' }))
-        setNotice(`Cadastro de ${authMode} realizado. Entre com seu e-mail e senha.`)
-        return
-      }
-      const result = await apiRequest<LoginResponse>('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email: authForm.email, password: authForm.password }),
-      })
-      signIn(result.accessToken, result.student)
-      setPage('catalogo')
-      navigate(result.student.accountType === 'professor' ? '/professor/atividades' : '/')
-      setNotice(`Bem-vindo(a), ${result.student.name}.`)
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Não foi possível acessar sua conta.')
-    } finally {
-      setAuthSubmitting(false)
-    }
-  }
-
->>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
   const confirmEnrollment = async () => {
     if (!selected || !selectedSeat) return
     if (!token) {
@@ -260,13 +199,8 @@ export default function App() {
     clearFeedback()
     if (nextPage !== page) { document.documentElement.scrollTop = 0; document.body.scrollTop = 0 }
     setPage(nextPage)
-<<<<<<< HEAD
     if (nextPage === 'catalogo' && location.pathname !== '/') navigate('/')
     if (nextPage === 'inscricoes' && location.pathname !== '/inscricoes') navigate('/inscricoes')
-=======
-    if (nextPage === 'conta') navigate('/login')
-    else if (location.pathname === '/login') navigate('/')
->>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
   }
 
   const columns = seatMap?.sala.tipo.toUpperCase() === 'NOTEBOOK' ? 5 : 6
@@ -274,36 +208,11 @@ export default function App() {
   const landing = !authenticated && page !== 'conta'
 
   return <div className="app-shell student-area">
-<<<<<<< HEAD
     <SiteHeader active={page === 'inscricoes' ? 'inscricoes' : page === 'conta' ? 'conta' : 'atividades'} onCatalog={() => goTo('catalogo')} onEnrollments={() => { goTo('inscricoes'); void loadEnrollments() }} onLogin={() => { setAuthMode('login'); goTo('conta') }} onLogout={() => { goTo('catalogo'); setNotice('Você saiu da sua conta.') }} />
-=======
-    <header className="topbar">
-      <button className="brand brand-button" type="button" onClick={() => goTo('catalogo')}>ConectaCampus</button>
-      <nav aria-label="Navegação da área do aluno">
-        <button className={page === 'catalogo' || page === 'detalhe' || page === 'assentos' ? 'nav-link active' : 'nav-link'} type="button" onClick={() => goTo('catalogo')}>Atividades</button>
-        {student && <button className={page === 'inscricoes' ? 'nav-link active' : 'nav-link'} type="button" onClick={() => { goTo('inscricoes'); void loadEnrollments() }}>Minhas inscrições</button>}
-        {student?.accountType === 'professor' && <Link className="nav-link" to="/professor/atividades">Área do professor</Link>}
-      </nav>
-      <div className="account">
-        {student
-          ? <><span>{student.name}</span><button className="button secondary small" type="button" onClick={() => { signOut(); goTo('catalogo'); setNotice('Você saiu da sua conta.') }}>Sair</button></>
-          : <button className="button primary small" type="button" onClick={() => { setAuthMode('login'); goTo('conta') }}>Entrar</button>}
-      </div>
-    </header>
->>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
 
     <main className="main-content">
       {landing ? <LandingPage onRegister={() => { setAuthMode('register'); goTo('conta') }} onLogin={() => { setAuthMode('login'); goTo('conta') }} /> : <div className="workspace-heading student-heading">
         <div>
-<<<<<<< HEAD
-=======
-          <p className="eyebrow">{page === 'conta' ? 'SUA CONTA' : student?.accountType === 'professor' ? 'ÁREA DO PROFESSOR' : 'ÁREA DO ALUNO'}</p>
-          <h1>{page === 'catalogo' ? 'Aulas e palestras' : page === 'detalhe' ? 'Detalhes da atividade' : page === 'assentos' ? 'Escolha seu assento' : page === 'inscricoes' ? 'Minhas inscrições' : 'Acesse sua conta'}</h1>
-          <p className="subtitle">{page === 'assentos' ? 'A seleção só é confirmada depois da inscrição.' : 'Encontre atividades acadêmicas e participe.'}</p>
-        </div>
-        {student?.accountType === 'professor' && page !== 'conta' && <Link className="button primary launch-activity" to="/professor/atividades/nova">Lançar aula</Link>}
-      </div>
->>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
 
           <h1>{page === 'catalogo' ? 'Aulas e palestras' : page === 'detalhe' ? 'Detalhes da atividade' : page === 'assentos' ? 'Escolha seu assento' : page === 'inscricoes' ? 'Minhas inscrições' : 'Acesse sua conta'}</h1>
           <p>{page === 'catalogo' ? 'Encontre seu próximo encontro de aprendizado no campus.' : page === 'assentos' ? 'A seleção só é confirmada depois da inscrição.' : page === 'inscricoes' ? 'Acompanhe as atividades em que você se inscreveu.' : page === 'detalhe' ? 'Conheça os detalhes antes de reservar seu lugar.' : 'Seu lugar na comunidade começa aqui.'}</p>
@@ -416,27 +325,9 @@ export default function App() {
         {!enrollmentsLoading && <Pagination label="inscrições" {...enrollmentPages} />}
       </>}
 
-<<<<<<< HEAD
       {page === 'conta' && <div className="account-layout"><aside className="account-intro"><div><span className="account-intro-star" aria-hidden="true">✳</span><h2>Um espaço para aprender <em>em conjunto.</em></h2><p>Entre para acompanhar suas inscrições e fazer parte dos próximos encontros.</p></div></aside><section className="panel narrow">
         <AuthForm key={authMode} initialMode={authMode} initialMessage={error} onSignIn={result => { const resumeSeat = Boolean(returnToSeat && selected); signIn(result.accessToken, result.student); setPage(resumeSeat ? 'assentos' : 'catalogo'); if (!resumeSeat && location.pathname !== '/') navigate('/', { replace: true }); setReturnToSeat(false); setError(''); setNotice(`Bem-vindo(a), ${result.student.name}.`) }} />
       </section></div>}
-=======
-      {page === 'conta' && <section className="panel narrow">
-        <div className="tabs auth-tabs" aria-label="Acesso e cadastro">
-          {(['login', 'aluno', 'professor'] as const).map(mode => <button key={mode} className={authMode === mode ? 'tab active' : 'tab'} type="button" aria-pressed={authMode === mode} disabled={authSubmitting} onClick={() => { setAuthMode(mode); clearFeedback() }}>
-            {mode === 'login' ? 'Entrar' : `Cadastro de ${mode}`}
-          </button>)}
-        </div>
-        <h2 className="auth-title">{authMode === 'login' ? 'Bem-vindo ao ConectaCampus' : `Crie sua conta de ${authMode}`}</h2>
-        <p className="auth-description">{authMode === 'login' ? 'Entre com seu e-mail e senha. Seu perfil abre a área correspondente.' : authMode === 'professor' ? 'Cadastre aulas e palestras, reserve salas e acompanhe suas atividades.' : 'Encontre aulas e palestras, escolha seu assento e acompanhe suas inscrições.'}</p>
-        <form onSubmit={event => void submitAuth(event)} className="form-grid">
-          {authMode !== 'login' && <><label>Nome<input required autoComplete="name" maxLength={200} value={authForm.name} onChange={event => setAuthForm({ ...authForm, name: event.target.value })} /></label><label>{authMode === 'professor' ? 'Curso / área de atuação' : 'Curso'}<input required maxLength={120} value={authForm.course} onChange={event => setAuthForm({ ...authForm, course: event.target.value })} /></label></>}
-          <label>E-mail<input type="email" required autoComplete="email" value={authForm.email} onChange={event => setAuthForm({ ...authForm, email: event.target.value })} /></label>
-          <label>Senha<input type="password" required autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} value={authForm.password} onChange={event => setAuthForm({ ...authForm, password: event.target.value })} /></label>
-          <button className="button primary" type="submit" disabled={authSubmitting}>{authSubmitting ? 'Aguarde…' : authMode === 'login' ? 'Entrar' : `Criar conta de ${authMode}`}</button>
-        </form>
-      </section>}
->>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
     </main>
     <SiteFooter />
   </div>

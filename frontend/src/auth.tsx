@@ -24,12 +24,8 @@ function storedStudent(): Student | null {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('ac-token'))
-<<<<<<< HEAD
   const [student, setStudent] = useState<Student | null>(() => localStorage.getItem('ac-token') ? storedStudent() : null)
-=======
-  const [student, setStudent] = useState<Student | null>(storedStudent)
   const [checkingSession, setCheckingSession] = useState(() => Boolean(localStorage.getItem('ac-token')))
->>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
 
   const signOut = useCallback(() => {
     localStorage.removeItem('ac-token')
@@ -55,38 +51,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [token, signOut])
 
-<<<<<<< HEAD
-  const refreshProfile = useCallback(async () => {
+  const refreshProfile = useCallback(async (signal?: AbortSignal) => {
     if (!token) return
-    const profile = await api<Student>('/api/auth/me')
+    const profile = await api<Student>('/api/auth/me', { signal })
+    if (signal?.aborted) return
     setStudent(profile)
     localStorage.setItem('ac-student', JSON.stringify(profile))
   }, [api, token])
 
-  useEffect(() => { if (token) void refreshProfile().catch(() => {}) }, [token, refreshProfile])
-  const value = useMemo(() => ({ token, student, signIn, signOut, api, refreshProfile }), [token, student, signIn, signOut, api, refreshProfile])
-=======
   useEffect(() => {
     if (!token) return
     const controller = new AbortController()
     setCheckingSession(true)
-    void apiRequest<Student>('/api/auth/me', { signal: controller.signal }, token)
-      .then(profile => {
-        if (controller.signal.aborted) return
-        // Uma sessão anterior pode ter sido salva antes da inclusão do tipo de conta.
-        if (profile.accountType !== 'aluno' && profile.accountType !== 'professor') return
-        localStorage.setItem('ac-student', JSON.stringify(profile))
-        setStudent(profile)
-      })
-      .catch(error => {
-        if (!controller.signal.aborted && error instanceof ApiError && error.status === 401) signOut()
-      })
-      .finally(() => { if (!controller.signal.aborted) setCheckingSession(false) })
+    void refreshProfile(controller.signal).catch(() => {}).finally(() => {
+      if (!controller.signal.aborted) setCheckingSession(false)
+    })
     return () => controller.abort()
-  }, [token, signOut])
-
-  const value = useMemo(() => ({ token, student, checkingSession, signIn, signOut, api }), [token, student, checkingSession, signIn, signOut, api])
->>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
+  }, [token, refreshProfile])
+  const value = useMemo(() => ({ token, student, checkingSession, signIn, signOut, api, refreshProfile }), [token, student, checkingSession, signIn, signOut, api, refreshProfile])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
