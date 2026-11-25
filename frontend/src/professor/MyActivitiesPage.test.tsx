@@ -1,12 +1,16 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { AuthProvider } from '../auth'
 import MyActivitiesPage from './MyActivitiesPage'
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+}
+
+function CurrentPath() {
+  return <output aria-label="Caminho atual">{useLocation().pathname}</output>
 }
 
 afterEach(() => {
@@ -32,9 +36,10 @@ describe('minhas atividades do professor', () => {
       return Promise.reject(new Error(`Rota inesperada: ${url}`))
     })
     vi.stubGlobal('fetch', fetchMock)
-    render(<MemoryRouter><AuthProvider><MyActivitiesPage /></AuthProvider></MemoryRouter>)
+    render(<MemoryRouter initialEntries={['/professor/atividades']}><AuthProvider><MyActivitiesPage /><CurrentPath /></AuthProvider></MemoryRouter>)
 
     expect(await screen.findByText('Atividade antiga')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Lançar aula' })).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Ordenar por data'), { target: { value: 'desc' } })
     const titles = Array.from(document.querySelectorAll('.professor-activity-card h2')).map(element => element.textContent)
     expect(titles).toEqual(['Atividade recente', 'Atividade antiga'])
@@ -42,5 +47,7 @@ describe('minhas atividades do professor', () => {
 
     expect(await screen.findByRole('heading', { name: 'Atividade recente' })).toBeTruthy()
     expect(screen.getByText('Laboratório Desktop')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Lançar aula' }))
+    expect(screen.getByLabelText('Caminho atual').textContent).toBe('/professor/atividades/nova')
   })
 })

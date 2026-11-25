@@ -23,6 +23,7 @@
 .professor-registration .spinner.dark { border-color: #08724e40; border-top-color: #08724e; }
 .professor-activities .activities-content { width: min(1200px, calc(100% - 40px)); }
 .professor-activities .activities-heading { gap: 24px; }
+.professor-activities .professor-heading-actions { display: grid; gap: 12px; min-width: 225px; }
 .professor-activities .sort-control { min-width: 225px; }
 .professor-activities .activities-loading { display: flex; justify-content: center; align-items: center; gap: 10px; color: #587069; }
 .professor-activities .activities-empty h2 { color: #173d35; }

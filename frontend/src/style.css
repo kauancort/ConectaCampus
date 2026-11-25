@@ -25,6 +25,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .account { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
 .main-content { width: min(1200px, calc(100% - 40px)); margin: 42px auto 64px; flex: 1; }
 .heading { display: flex; justify-content: space-between; align-items: end; margin-bottom: 24px; }
+.heading:has(.launch-activity) { gap: 20px; flex-wrap: wrap; }
+.launch-activity { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; white-space: nowrap; }
 .eyebrow { margin: 0 0 8px; color: #3f806b; font-size: .75rem; letter-spacing: .12em; font-weight: 800; }
 h1 { color: #173d35; font-size: clamp(1.7rem, 3vw, 2.5rem); margin: 0; line-height: 1.15; }
 .subtitle { margin: 10px 0 0; color: #587069; }
@@ -98,6 +100,12 @@ textarea { resize: vertical; }
 .tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #dce5e0; }
 .tab { padding: 10px 12px; border: 0; background: transparent; color: #567168; }
 .tab.active { color: #08724e; border-bottom: 3px solid #08724e; font-weight: 750; }
+.auth-tabs { flex-wrap: wrap; gap: 4px; }
+.auth-tabs .tab { flex: 1; min-width: 100px; padding-inline: 8px; }
+.auth-tabs .tab:disabled { cursor: wait; }
+.auth-title { color: #173d35; font-size: 1.2rem; }
+.auth-description { margin: 10px 0 24px; color: #587069; line-height: 1.5; }
+.topbar a.nav-link { text-decoration: none; }
 .form-grid { display: grid; gap: 16px; }
 .two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .span-two { grid-column: 1 / -1; }

@@ -41,6 +41,14 @@ As reservas usam transações, bloqueio por número de sala e `SELECT ... FOR UP
 | Autenticação | ASP.NET Core Identity e JWT |
 | Ambiente local | Docker Compose |
 
+## Cadastro de aluno e professor
+
+Na tela de acesso (`/login`), escolha **Entrar**, **Cadastro de aluno** ou **Cadastro de professor**. O login é único para os dois perfis: professores seguem para **Minhas atividades**, com o botão **Lançar aula**; alunos seguem para o catálogo e suas inscrições. Professores também encontram **Lançar aula** diretamente no catálogo. Ao reabrir uma sessão, o frontend consulta `/api/auth/me` e atualiza o perfil salvo, aguardando essa consulta antes de decidir o acesso às rotas do professor.
+
+O cadastro recebe `accountType` com o valor `aluno` ou `professor`, escolhido pelo usuário. O perfil é salvo no banco e retornado no cadastro, login e `/api/auth/me`; o JWT inclui a claim `account_type`. Requisições antigas de cadastro sem esse campo continuam criando contas de aluno. A API exige perfil de professor em `POST /api/atividades` e `GET /api/atividades/minhas`; contas de aluno recebem HTTP 403 nessas rotas.
+
+A migration automática `AddAccountTypes` adiciona o perfil sem apagar usuários ou atividades. Contas que já organizavam ou eram responsáveis por atividades recebem o perfil de professor; as demais recebem aluno. Após atualizar o backend e o frontend, saia e entre novamente para renovar o token e o perfil salvo no navegador. O `vercel.json` do frontend permite abrir e recarregar `/login` e as rotas do professor diretamente na Vercel.
+
 ## Executar localmente
 
 ### Pré-requisitos
@@ -201,6 +209,7 @@ Valores aceitos:
 
 ## Testes
 
+<<<<<<< HEAD
 Além dos testes de unidade e integração da API com PostgreSQL, o frontend possui testes de componentes e testes de ponta a ponta com Chromium, API e banco reais. O fluxo de navegador cobre cadastro, login, solicitação e aprovação de acesso, publicação, seleção de assento, cancelamento, notificações e disputa simultânea pelo mesmo lugar. As três suítes também são executadas no GitHub Actions.
 
 Para executar os testes de navegador localmente, use um banco **descartável e exclusivo** chamado `conectacampus_e2e`; os testes criam contas e atividades e concedem acesso de professor diretamente nesse banco. Nunca use o banco de desenvolvimento ou produção. Com Docker e .NET SDK 10 instalados:
@@ -244,6 +253,13 @@ Validação local desta migração: build Release e publish concluídos sem erro
 Para compilar e executar a suíte com um PostgreSQL exclusivo para testes, consulte [backend.tests/README.md](backend.tests/README.md). Os testes usam o provider real, migrations automáticas, Identity e JWT, incluindo concorrência, duplicidade, rollback, cancelamento e reinscrição. Não aponte testes para o banco local de desenvolvimento.
 
 Essa validação foi realizada durante a migração para PostgreSQL. Desde então, o frontend e suas suítes foram ampliados; testes de carga e Lighthouse continuam pendentes.
+=======
+Validação atual: builds do frontend e backend Release concluídos sem erros, 58 testes do backend aprovados com PostgreSQL 17 e 17 testes do frontend aprovados com Vitest. O teste automatizado de atualização de um banco auxiliar preservou usuários, hashes de senha e atividade existentes e atribuiu os perfis esperados. Também foram verificados tokens adulterados, acesso sem login e tentativas de alterar o perfil por requisições. A verificação em navegador cobriu sete cenários de cadastro, login, publicação por professor, persistência da sessão e bloqueio de alunos na área do professor e na API, sem erros JavaScript. O cadastro e o acesso a **Lançar aula** foram inspecionados em desktop e celular, sem rolagem horizontal. Os novos testes verificam recuperação de perfis antigos, bloqueio de alunos e encerramento de sessões expiradas.
+
+Para compilar e executar a suíte com um PostgreSQL exclusivo para testes, consulte [backend.tests/README.md](backend.tests/README.md). Os testes usam o provider real, migrations automáticas, Identity e JWT, incluindo concorrência, duplicidade, rollback, cancelamento e reinscrição. Não aponte testes para o banco local de desenvolvimento.
+
+Carga k6/JMeter, Lighthouse e a verificação de todas as telas em todos os tamanhos continuam pendentes.
+>>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
 
 ## Equipe
 

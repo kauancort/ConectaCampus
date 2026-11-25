@@ -15,6 +15,11 @@ status e horários das grades DESKTOP (4 × 6) e NOTEBOOK (4 × 5).
 
 Os testes de integração usam o provider Npgsql real, as migrations PostgreSQL e o login JWT existente.
 Criam alunos pela API de cadastro e removem os próprios registros ao terminar.
+As classes compartilham uma única instância da API e executam em sequência sobre o banco;
+os testes de concorrência continuam enviando requisições simultâneas dentro de cada caso.
+O teste de atualização dos perfis cria um banco auxiliar com nome aleatório e o remove ao terminar,
+inclusive em falhas. Por isso, a suíte completa exige um usuário com permissão `CREATEDB`;
+o `POSTGRES_USER` do contêiner descartável abaixo já atende a esse requisito.
 
 Em um terminal, inicie um banco exclusivo para testes e mantenha o contêiner ativo
 até os testes terminarem. Gere uma senha aleatória para esse contêiner local descartável.
@@ -49,10 +54,30 @@ Os testes de integração verificam o mapa autenticado sem dados pessoais, o iso
 entre atividades, autenticação, uso do aluno do token, consulta das próprias inscrições,
 assentos inválidos, duplicidade, concorrência, cancelamento e reinscrição. Também provocam
 uma violação real do índice único para verificar HTTP 409 e rollback da transação.
+<<<<<<< HEAD
 Os testes existentes incluem ainda autenticação, permissões, solicitações, notificações, concorrência e migrações PostgreSQL.
+=======
+Somados aos testes existentes, unitários, de migração PostgreSQL e de perfis de conta, são 58 casos.
+>>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
 Os casos adicionais validam reaplicação das migrations sem duplicar o seed, isolamento
 das tabelas/Identity em schema privado e filtros por tema sem distinguir maiúsculas,
 com `%`, `_` e `\` tratados como texto literal.
+
+Os testes de conta verificam cadastro, login e perfil de aluno/professor, a claim `account_type`
+no JWT, a rejeição de tipos inválidos e o HTTP 403 para alunos nas rotas de criação e listagem
+de atividades do professor. Os testes de atividades cadastram os responsáveis como professores;
+as inscrições continuam usando a autenticação existente.
+
+A suíte também verifica HTTP 401 sem token, rejeição de JWT com claim adulterada, tentativa
+de trocar o perfil pelo corpo do login e novo cadastro com e-mail existente e outro perfil.
+O teste de atualização aplica a migration inicial em um banco auxiliar, cria contas e uma
+atividade legadas e aplica `AddAccountTypes`: organizador e responsável tornam-se professores,
+o aluno permanece aluno, e IDs, dados, hashes de senha e atividade são preservados.
+
+Na validação da integração, os 58 casos passaram em PostgreSQL 17 local, incluindo as novas
+verificações de intervalos adjacentes e de atividades canceladas, que saem do catálogo e
+liberam a sala. O teste de atualização removeu seu banco auxiliar. A suíte anterior de
+52 casos também foi validada com `SSL Mode=VerifyFull` e certificado temporário.
 
 ## Contratos implementados
 

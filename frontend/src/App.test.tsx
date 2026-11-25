@@ -107,13 +107,19 @@ describe('jornadas da área do aluno', () => {
     expect(screen.queryByRole('button', { name: 'Confirmar inscrição' })).toBeNull()
   })
   it('pesquisa atividades por tema e preserva a navegação para a área do professor', async () => {
+<<<<<<< HEAD
     const profile = { id: 'aluno-1', name: 'Ada', email: 'ada@example.test', course: 'DSM' }
     localStorage.setItem('ac-token', 'token-de-teste')
     localStorage.setItem('ac-student', JSON.stringify(profile))
+=======
+    localStorage.setItem('ac-token', 'token-de-teste')
+    localStorage.setItem('ac-student', JSON.stringify({ id: 'professor-1', name: 'Professor', email: 'prof@example.test', course: 'DSM', accountType: 'professor' }))
+>>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
     const fetchMock = vi.fn((url: string) => {
       if (url === '/api/auth/me') return Promise.resolve(json(profile))
       if (url === '/api/notificacoes' || url === '/api/inscricoes/minhas') return Promise.resolve(json([]))
       if (url === '/api/atividades') return Promise.resolve(json([]))
+      if (url === '/api/inscricoes/minhas') return Promise.resolve(json([]))
       if (url === '/api/atividades?tema=testes') return Promise.resolve(json([activity]))
       return Promise.reject(new Error(`Rota inesperada: ${url}`))
     })
@@ -124,7 +130,43 @@ describe('jornadas da área do aluno', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Buscar' }))
 
     expect(await screen.findByText('Oficina de testes')).toBeTruthy()
+<<<<<<< HEAD
     expect(screen.queryByRole('link', { name: 'Área do professor' })).toBeNull()
+=======
+    expect(screen.getByRole('link', { name: 'Área do professor' }).getAttribute('href')).toBe('/professor/atividades')
+    expect(screen.getByRole('link', { name: 'Lançar aula' }).getAttribute('href')).toBe('/professor/atividades/nova')
+  })
+
+  it('recupera o botão de lançar aula quando o perfil salvo é anterior à inclusão do tipo de conta', async () => {
+    const profile = { id: 'professor-1', name: 'Professor', email: 'prof@example.test', course: 'DSM' }
+    localStorage.setItem('ac-token', 'token-de-teste')
+    localStorage.setItem('ac-student', JSON.stringify(profile))
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url === '/api/auth/me') return Promise.resolve(json({ ...profile, accountType: 'professor' }))
+      if (url === '/api/atividades' || url === '/api/inscricoes/minhas') return Promise.resolve(json([]))
+      return Promise.reject(new Error(`Rota inesperada: ${url}`))
+    }))
+
+    renderApp()
+
+    expect((await screen.findByRole('link', { name: 'Lançar aula' })).getAttribute('href')).toBe('/professor/atividades/nova')
+    expect(JSON.parse(localStorage.getItem('ac-student')!).accountType).toBe('professor')
+  })
+
+  it('não exibe lançar aula para contas de aluno', async () => {
+    const profile = { id: 'aluno-1', name: 'Aluno', email: 'aluno@example.test', course: 'DSM', accountType: 'aluno' }
+    localStorage.setItem('ac-token', 'token-de-teste')
+    localStorage.setItem('ac-student', JSON.stringify(profile))
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url === '/api/auth/me') return Promise.resolve(json(profile))
+      return Promise.resolve(json([]))
+    }))
+
+    renderApp()
+    await screen.findByText('Nenhuma atividade encontrada. Tente outro tema.')
+
+    expect(screen.queryByRole('link', { name: 'Lançar aula' })).toBeNull()
+>>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
   })
 
   it('permite criar conta, entrar e sair sem deixar a sessão armazenada', async () => {
@@ -133,7 +175,7 @@ describe('jornadas da área do aluno', () => {
       if (url === '/api/auth/register' && init?.method === 'POST') return Promise.resolve(json({ id: 'aluno-1' }, 201))
       if (url === '/api/auth/login' && init?.method === 'POST') return Promise.resolve(json({
         accessToken: 'novo-token', tokenType: 'Bearer', expiresAtUtc: '2032-01-01T00:00:00Z',
-        student: { id: 'aluno-1', name: 'Ada', email: 'ada@example.test', course: 'DSM' },
+        student: { id: 'aluno-1', name: 'Ada', email: 'ada@example.test', course: 'DSM', accountType: 'aluno' },
       }))
       if (url === '/api/inscricoes/minhas') return Promise.resolve(json([]))
       return Promise.reject(new Error(`Rota inesperada: ${url}`))
@@ -141,19 +183,32 @@ describe('jornadas da área do aluno', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     renderApp()
+<<<<<<< HEAD
     fireEvent.click(await screen.findByRole('link', { name: 'Entrar' }))
     fireEvent.click(screen.getByRole('button', { name: 'Criar cadastro' }))
+=======
+    fireEvent.click(await screen.findByRole('button', { name: 'Entrar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cadastro de aluno' }))
+>>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
     fireEvent.change(screen.getByLabelText('Nome'), { target: { value: 'Ada' } })
     fireEvent.change(screen.getByLabelText('Curso'), { target: { value: 'DSM' } })
     fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: 'ada@example.test' } })
     fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'Fatec!Teste2026' } })
+<<<<<<< HEAD
     fireEvent.change(screen.getByLabelText('Confirmar senha'), { target: { value: 'Fatec!Teste2026' } })
     fireEvent.click(screen.getByRole('button', { name: 'Criar conta' }))
     expect(await screen.findByText('Cadastro realizado. Entre com seu e-mail e senha.')).toBeTruthy()
+=======
+    fireEvent.click(screen.getByRole('button', { name: 'Criar conta de aluno' }))
+    expect(await screen.findByText('Cadastro de aluno realizado. Entre com seu e-mail e senha.')).toBeTruthy()
+    expect(fetchMock).toHaveBeenCalledWith('/api/auth/register', expect.objectContaining({
+      body: expect.stringContaining('"accountType":"aluno"'),
+    }))
+>>>>>>> 1524e16cfcfef7673dca4642fc242c4617009a43
 
     fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'Fatec!Teste2026' } })
     fireEvent.click(screen.getByText('Entrar', { selector: 'button[type="submit"]' }))
-    expect(await screen.findByText('Bem-vindo(a), Ada.')).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Sair' })).toBeTruthy()
     expect(localStorage.getItem('ac-token')).toBe('novo-token')
     fireEvent.click(screen.getByRole('button', { name: 'Sair' }))
     expect(screen.getByRole('link', { name: 'Entrar' })).toBeTruthy()

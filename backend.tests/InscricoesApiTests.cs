@@ -12,8 +12,8 @@ using Xunit;
 
 namespace AprendizagemColaborativa.Api.Tests;
 
-public sealed class InscricoesApiTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>, IAsyncLifetime
+[Collection(ApiIntegrationCollection.Name)]
+public sealed class InscricoesApiTests(WebApplicationFactory<Program> factory) : IAsyncLifetime
 {
     private readonly HttpClient _public = factory.CreateClient();
     private readonly List<string> _alunos = [];
@@ -29,7 +29,7 @@ public sealed class InscricoesApiTests(WebApplicationFactory<Program> factory)
 
     public async Task InitializeAsync()
     {
-        _primeiro = await CriarAlunoAsync();
+        _primeiro = await CriarAlunoAsync("professor");
         _segundo = await CriarAlunoAsync();
         _atividade = await CriarAtividadeAsync();
     }
@@ -308,13 +308,13 @@ public sealed class InscricoesApiTests(WebApplicationFactory<Program> factory)
         await action(scope.ServiceProvider.GetRequiredService<ApplicationDbContext>());
     }
 
-    private async Task<HttpClient> CriarAlunoAsync()
+    private async Task<HttpClient> CriarAlunoAsync(string accountType = "aluno")
     {
         var email = $"inscricoes-{Guid.NewGuid():N}@example.test";
         const string password = "Fatec!Teste2026";
         using var register = await _public.PostAsJsonAsync("/api/auth/register", new
         {
-            name = "Aluno de teste", email, course = "DSM", password
+            name = "Aluno de teste", email, course = "DSM", password, accountType
         });
         Assert.Equal(HttpStatusCode.Created, register.StatusCode);
         var aluno = (await register.Content.ReadFromJsonAsync<StudentResponse>())!;

@@ -84,6 +84,13 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
+                    b.Property<string>("TipoConta")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("aluno");
+
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
 
@@ -101,7 +108,10 @@ namespace AprendizagemColaborativa.Api.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex");
 
-                    b.ToTable("AspNetUsers", "conectacampus");
+                    b.ToTable("AspNetUsers", "conectacampus", t =>
+                        {
+                            t.HasCheckConstraint("CK_AspNetUsers_TipoConta", "\"TipoConta\" IN ('aluno', 'professor')");
+                        });
                 });
 
             modelBuilder.Entity("AprendizagemColaborativa.Api.Models.Assento", b =>
