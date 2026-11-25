@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useAuth } from './auth'
+import useDismissiblePopover from './useDismissiblePopover'
 
 type Notification = { id: string; mensagem: string; lida: boolean; criadaEmUtc?: string }
 
@@ -9,10 +10,10 @@ function dateLabel(value?: string) {
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-export default function NotificationBell() {
+export default function NotificationBell({ open, onToggle, onClose }: { open: boolean; onToggle: () => void; onClose: () => void }) {
   const { api } = useAuth()
   const [items, setItems] = useState<Notification[]>([])
-  const [open, setOpen] = useState(false)
+  const panelId = useId()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [marking, setMarking] = useState<string | null>(null)
@@ -43,14 +44,7 @@ export default function NotificationBell() {
     return () => { mounted.current = false; requestVersion.current++; window.clearInterval(timer); window.removeEventListener('notifications-changed', refresh); window.removeEventListener('focus', refresh) }
   }, [load])
 
-  useEffect(() => {
-    if (!open) return
-    const outside = (event: PointerEvent) => { if (event.target instanceof Node && !menu.current?.contains(event.target)) setOpen(false) }
-    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { setOpen(false); trigger.current?.focus() } }
-    document.addEventListener('pointerdown', outside)
-    document.addEventListener('keydown', escape)
-    return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape) }
-  }, [open])
+  useDismissiblePopover(open, onClose, menu, trigger)
 
   async function markRead(item: Notification) {
     if (marking) return
@@ -67,12 +61,12 @@ export default function NotificationBell() {
   const unread = items.filter(item => !item.lida).length
   const label = unread ? `Notificações, ${unread} ${unread === 1 ? 'não lida' : 'não lidas'}` : 'Notificações'
   return <div className="notification-menu" ref={menu}>
-    <button ref={trigger} type="button" className="notification-trigger" aria-label={label} aria-expanded={open} aria-controls="notification-popover" onClick={() => { setOpen(current => !current); if (!open) void load() }}>
+    <button ref={trigger} type="button" className="notification-trigger" aria-label={label} aria-expanded={open} aria-controls={panelId} onClick={() => { onToggle(); if (!open) void load() }}>
       <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8.5a6 6 0 0 0-12 0c0 6-2.5 6.5-2.5 8h17c0-1.5-2.5-2-2.5-8Z" /><path d="M10 19.5a2.2 2.2 0 0 0 4 0" /></svg>
       {unread > 0 && <span className="notification-badge" aria-hidden="true">{unread > 99 ? '99+' : unread}</span>}
     </button>
-    {open && <section className="notification-popover" id="notification-popover" role="region" aria-label="Notificações recentes">
-      <div className="notification-popover-head"><div><h2>Notificações</h2></div><div className="notification-head-actions"><span className="notification-popover-count">{unread} {unread === 1 ? 'não lida' : 'não lidas'}</span><button type="button" className="notification-close" aria-label="Fechar notificações" onClick={() => { setOpen(false); trigger.current?.focus() }}>×</button></div></div>
+    {open && <section className="notification-popover" id={panelId} role="region" aria-label="Notificações recentes" data-popover-panel>
+      <div className="notification-popover-head"><div><h2>Notificações</h2></div><div className="notification-head-actions"><span className="notification-popover-count">{unread} {unread === 1 ? 'não lida' : 'não lidas'}</span><button type="button" className="notification-close" aria-label="Fechar notificações" onClick={() => { onClose(); trigger.current?.focus() }}>×</button></div></div>
       {error && <div className="notification-popover-error" role="alert">{error} <button className="text-button" type="button" onClick={() => void load()}>Tentar novamente</button></div>}
       <div className="notification-popover-list">
         {loading ? <p className="notification-popover-empty" role="status">Carregando notificações…</p> : items.length === 0 ? (error ? null : <div className="notification-popover-empty"><span aria-hidden="true">✳</span><p>Nenhuma notificação ainda.</p></div>) : items.map(item => <article className={`notification-popover-item ${item.lida ? '' : 'unread'}`} key={item.id}>

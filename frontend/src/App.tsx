@@ -1,11 +1,12 @@
 import Pagination, { usePagination } from './Pagination'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ApiError, type Activity, type Enrollment, type Seat, type SeatMap } from './api'
+import { ApiError, type Activity, type Enrollment, type LoginResponse, type Seat, type SeatMap } from './api'
 import { useAuth } from './auth'
 import AuthForm from './AuthForm'
 import SiteHeader from './SiteHeader'
 import LandingPage from './LandingPage'
+import { getLoginDestination } from './navigation'
 
 type Page = 'catalogo' | 'detalhe' | 'assentos' | 'inscricoes' | 'conta'
 
@@ -203,6 +204,19 @@ export default function App() {
   }
 
   const columns = seatMap?.sala.tipo.toUpperCase() === 'NOTEBOOK' ? 5 : 6
+  const handleSignIn = (result: LoginResponse) => {
+    const resumeSeat = Boolean(returnToSeat && selected)
+    signIn(result.accessToken, result.student)
+    if (resumeSeat) setPage('assentos')
+    else {
+      const destination = getLoginDestination(result.student)
+      if (destination === '/') setPage('catalogo')
+      navigate(destination, { replace: true })
+    }
+    setReturnToSeat(false)
+    setError('')
+    setNotice(`Bem-vindo(a), ${result.student.name}.`)
+  }
   const authenticated = Boolean(token && student)
   const landing = !authenticated && page !== 'conta'
 
@@ -325,7 +339,7 @@ export default function App() {
       </>}
 
       {page === 'conta' && <div className="account-layout"><aside className="account-intro"><div><span className="account-intro-star" aria-hidden="true">✳</span><h2>Um espaço para aprender <em>em conjunto.</em></h2><p>Entre para acompanhar suas inscrições e fazer parte dos próximos encontros.</p></div></aside><section className="panel narrow">
-        <AuthForm key={authMode} initialMode={authMode} initialMessage={error} onSignIn={result => { const resumeSeat = Boolean(returnToSeat && selected); signIn(result.accessToken, result.student); setPage(resumeSeat ? 'assentos' : 'catalogo'); if (!resumeSeat && location.pathname !== '/') navigate('/', { replace: true }); setReturnToSeat(false); setError(''); setNotice(`Bem-vindo(a), ${result.student.name}.`) }} />
+        <AuthForm key={authMode} initialMode={authMode} initialMessage={error} onSignIn={handleSignIn} />
       </section></div>}
     </main>
   </div>

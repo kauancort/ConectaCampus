@@ -81,7 +81,7 @@ it('envia o número da sala na proposta', async () => {
   vi.stubGlobal('fetch', fetchMock)
   render(<MemoryRouter><AuthProvider><StudentProposalsPage /></AuthProvider></MemoryRouter>)
   expect(screen.queryByLabelText('Título da aula')).toBeNull()
-  fireEvent.click(screen.getByRole('link', { name: 'Propor uma aula' }))
+  fireEvent.click(screen.getByRole('link', { name: 'Criar aula' }))
   fireEvent.change(screen.getByLabelText('Título da aula'), { target: { value: 'Oficina' } })
   fireEvent.change(screen.getByLabelText('Tema'), { target: { value: 'Dados' } })
   fireEvent.change(screen.getByLabelText('Descrição'), { target: { value: 'Atividade prática' } })

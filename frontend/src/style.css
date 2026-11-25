@@ -15,14 +15,8 @@ button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #e5a83b; outline-offset: 2px; }
 .app-shell { min-height: 100vh; display: flex; flex-direction: column; }
-.topbar { min-height: 72px; display: flex; align-items: center; gap: 24px; padding: 12px max(20px, calc((100vw - 1200px) / 2)); background: #fff; border-bottom: 1px solid #dce5e0; }
-.brand { color: #123b35; font-weight: 800; text-decoration: none; white-space: nowrap; }
-.brand-button { border: 0; background: transparent; padding: 0; font: inherit; cursor: pointer; }
-.topbar nav { display: flex; flex: 1; flex-wrap: wrap; gap: 4px; }
-.nav-link, .text-button { border: 0; background: transparent; color: #36554d; padding: 9px 11px; border-radius: 8px; }
-.nav-link:hover, .text-button:hover { background: #edf4f0; }
-.nav-link.active { color: #096447; background: #e5f2eb; font-weight: 700; }
-.account { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
+.text-button { border: 0; background: transparent; color: #36554d; padding: 9px 11px; border-radius: 8px; }
+.text-button:hover { background: #edf4f0; }
 .main-content { width: min(1200px, calc(100% - 40px)); margin: 42px auto 64px; flex: 1; }
 .heading { display: flex; justify-content: space-between; align-items: end; margin-bottom: 24px; }
 .heading:has(.launch-activity) { gap: 20px; flex-wrap: wrap; }
@@ -105,7 +99,6 @@ textarea { resize: vertical; }
 .auth-tabs .tab:disabled { cursor: wait; }
 .auth-title { color: #173d35; font-size: 1.2rem; }
 .auth-description { margin: 10px 0 24px; color: #587069; line-height: 1.5; }
-.topbar a.nav-link { text-decoration: none; }
 .form-grid { display: grid; gap: 16px; }
 .two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .span-two { grid-column: 1 / -1; }
@@ -117,8 +110,6 @@ textarea { resize: vertical; }
 
 /* Uma linguagem visual discreta, inspirada em materiais de sala de aula. */
 :root { background: #f5f3ee; color: #243632; }
-.topbar { border-top: 4px solid #a65f3c; border-bottom-color: #deded5; }
-.brand, .brand-button { color: #173f36; font-weight: 800; letter-spacing: -.035em; font-size: 1.2rem; }
 .main-content { max-width: 1120px; }
 .heading { padding-bottom: 22px; border-bottom: 1px solid #d6ddd6; }
 h1 { font-family: Georgia, 'Times New Roman', serif; font-weight: 600; letter-spacing: -.025em; }
@@ -132,17 +123,10 @@ h1 { font-family: Georgia, 'Times New Roman', serif; font-weight: 600; letter-sp
 .seat { border-radius: 5px 5px 10px 10px; }
 
 @media (max-width: 900px) {
-  .topbar { align-items: flex-start; flex-wrap: wrap; gap: 10px; }
-  .topbar nav { order: 3; flex-basis: 100%; }
-  .account { margin-left: auto; }
   .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 560px) {
-  .topbar { padding: 14px 16px; }
-  .topbar nav { gap: 2px; }
-  .nav-link { padding: 8px; font-size: .88rem; }
-  .account { font-size: .85rem; }
   .main-content { width: calc(100% - 28px); margin: 28px auto 42px; }
   .filters, .cards, .two-col, .detail-grid { grid-template-columns: 1fr; }
   .span-two { grid-column: auto; }
@@ -160,18 +144,6 @@ h1 { font-family: Georgia, 'Times New Roman', serif; font-weight: 600; letter-sp
 /* ConectaCampus — identidade editorial para a vida no campus. */
 :root { font-family: 'Segoe UI', ui-sans-serif, system-ui, sans-serif; color: #192b29; background: #f7f6f0; }
 body { background: #f7f6f0; }
-.topbar { min-height: 80px; padding: 0 max(28px, calc((100vw - 1312px) / 2)); gap: 48px; background: #fbfaf5; border: 0; border-bottom: 1px solid #d9ded5; }
-.brand, .brand-button { display: inline-flex; align-items: center; gap: 10px; color: #183d35; font-size: 1.16rem; font-weight: 750; letter-spacing: -.06em; text-decoration: none; }
-.brand-campus { font-weight: 450; }
-.brand-symbol { display: grid; flex: 0 0 32px; width: 32px; height: 32px; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); gap: 3px; transform: rotate(-8deg); }
-.brand-symbol i { background: #da7254; border-radius: 1px 7px 1px 7px; }
-.brand-symbol i:nth-child(2), .brand-symbol i:nth-child(3) { background: #214c41; }
-.topbar nav { align-self: stretch; align-items: stretch; gap: 20px; }
-.topbar .nav-link { display: inline-flex; align-items: center; padding: 4px 0; border-radius: 0; border-bottom: 2px solid transparent; color: #586b62; font-size: .85rem; text-decoration: none; white-space: nowrap; }
-.topbar .nav-link:hover { color: #204d40; background: transparent; }
-.topbar .nav-link.active { color: #183e34; background: transparent; border-bottom-color: #ce7051; }
-.account { font-size: .85rem; color: #40584e; }
-.account > span { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .main-content { width: min(1312px, calc(100% - 56px)); max-width: none; margin: 0 auto 88px; }
 .student-area .main-content { margin-top: 0; }
 .heading { margin: 48px 0 30px; padding-bottom: 28px; border-color: #dce0d7; }
@@ -505,17 +477,11 @@ label { color: #405b4e; font-size: .8rem; }
   .activity-detail-layout { grid-template-columns: 1fr 300px; }
 }
 @media (max-width: 620px) {
-  .account > span { max-width: 82px; }
-  .account { gap: 7px; }
   .notification-popover { position: fixed; top: 66px; left: 16px; right: 16px; width: auto; max-height: calc(100dvh - 82px); }
   .workspace { padding-top: 16px; }.workspace-heading { align-items: start; min-height: 0; padding: 20px; gap: 16px; }.workspace-heading h1 { font-size: clamp(1.9rem, 8vw, 2.35rem); }.workspace-heading-note { display: none; }.student-heading { margin-top: 16px; }.workspace-grid { margin-top: 18px; gap: 0; }.workspace-aside { display: block; }.workspace-panel { padding: 24px 20px; margin-bottom: 16px; }.workspace-section-head { margin-top: 44px; align-items: start; }.workspace-section-head .proposal-heading { font-size: 1.8rem; }.count-label { font-size: .55rem; }.supervisor-heading { flex-direction: column; }.supervisor-summary { width: 100%; padding: 14px 0 0; border: 0; border-top: 1px solid #bfd0b9; }.proposal-card { padding: 24px 20px; }.proposal-card h2 { font-size: 1.65rem; }.proposal-card-top { align-items: start; }.proposal-meta { grid-template-columns: 1fr 1fr; }.activity-detail-layout { grid-template-columns: 1fr; }.detail-main, .detail-aside { padding: 26px 22px; }.detail-main h2 { margin: 28px 0; font-size: 2.5rem; }.seat-panel { padding: 24px 16px; }.seat-panel-heading h2 { font-size: 1.8rem; }.seat-map { gap: 6px; padding: 12px; }.seat { min-width: 0; }.seat-selection { align-items: stretch; flex-direction: column; }
 }
-@media (max-width: 420px) { .account > span { display: none; } .account { gap: 4px; } .topbar .brand { font-size: 1rem; gap: 8px; } .topbar .brand-symbol { width: 27px; height: 27px; flex-basis: 27px; } .account .button.small { padding-inline: 10px; } }
 
 @media (max-width: 900px) {
-  .topbar { gap: 12px; padding: 16px 24px 0; }
-  .topbar nav { min-height: 44px; overflow-x: auto; flex-wrap: nowrap; }
-  .topbar .nav-link { flex-shrink: 0; }
   .catalog-intro { grid-template-columns: 1fr .75fr; }
   .intro-copy { padding: 40px 32px; }
   .intro-copy h1 { font-size: clamp(2.8rem, 6vw, 4rem); }
@@ -523,8 +489,6 @@ label { color: #405b4e; font-size: .8rem; }
   .landing-intro { grid-template-columns: 1fr 1fr; gap: 30px; }
 }
 @media (max-width: 620px) {
-  .topbar { padding: 14px 16px 0; }
-  .topbar nav { gap: 20px; }
   .main-content { width: calc(100% - 32px); margin-bottom: 56px; }
   .catalog-intro { grid-template-columns: 1fr; margin-top: 16px; }
   .intro-copy { padding: 38px 26px 34px; }
@@ -564,25 +528,6 @@ label { color: #405b4e; font-size: .8rem; }
   .landing-steps-grid h3 { margin-top: 24px; }
   .landing-invitation { padding: 34px 26px; }
   .landing-hero-note { margin-top: 30px; }
-}
-
-/* Navegação compartilhada em todas as áreas da plataforma. */
-.topbar { position: relative; z-index: 10; }
-.area-menu { position: relative; display: flex; align-self: stretch; }
-.topbar .area-trigger { gap: 8px; font-weight: 400; }
-.topbar .area-trigger.active { font-weight: 700; }
-.area-dropdown { position: absolute; top: calc(100% - 1px); left: -18px; width: 240px; padding: 14px; background: #fbfaf5; border: 1px solid #d9ded5; box-shadow: 0 12px 28px #173e341c; }
-.area-dropdown p { margin: 2px 10px 8px; color: #b15e47; font-size: .62rem; font-weight: 800; letter-spacing: .14em; }
-.area-dropdown a { display: flex; justify-content: space-between; gap: 12px; padding: 11px 10px; color: #36554d; font-size: .85rem; text-decoration: none; }
-.area-dropdown a:hover, .area-dropdown a[aria-current="page"] { color: #183e34; background: #eaf0e5; }
-@media (max-width: 900px) {
-  .topbar nav { overflow: visible; }
-  .area-menu { flex-shrink: 0; }
-}
-@media (max-width: 900px) {
-  .topbar nav { position: relative; }
-  .area-menu { position: static; }
-  .area-dropdown { top: 100%; left: 0; width: min(240px, 100%); }
 }
 
 /* Acompanhamento de aulas supervisionadas. */

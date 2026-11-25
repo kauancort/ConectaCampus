@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './auth'
+import { StudentProposalsPage } from './PropostasPage'
 
 const activity = {
   id: '6d7b5e0f-7e35-4a3b-9050-5f21a7aa1234',
@@ -29,6 +30,27 @@ afterEach(() => {
   cleanup()
   localStorage.clear()
   vi.unstubAllGlobals()
+})
+
+it.each([
+  { professor: true, podeMinistrar: false, heading: 'Minhas aulas.' },
+  { professor: false, podeMinistrar: false, heading: 'Aulas e palestras' },
+  { professor: false, podeMinistrar: true, heading: 'Aulas e palestras' },
+])('redireciona após login segundo as permissões reais (%j)', async ({ professor, podeMinistrar, heading }) => {
+  const profile = { id: '1', name: 'Ada', email: 'ada@example.test', course: 'DSM', professor, podeMinistrar }
+  vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(json(url === '/api/auth/login'
+    ? { accessToken: 'token', student: profile }
+    : url === '/api/auth/me' ? profile : []))))
+  window.history.replaceState({}, '', '/entrar')
+  render(<BrowserRouter><AuthProvider><Routes>
+    <Route path="/ministrar" element={<StudentProposalsPage />} />
+    <Route path="*" element={<App />} />
+  </Routes></AuthProvider></BrowserRouter>)
+  fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: profile.email } })
+  fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'Campus123@' } })
+  fireEvent.click(screen.getByText('Entrar', { selector: 'button[type="submit"]' }))
+  expect(await screen.findByRole('heading', { name: heading }, { timeout: 5000 })).toBeTruthy()
+  expect(screen.getByRole('button', { name: new RegExp(`Perfil de Ada, ${professor ? 'Professor' : 'Aluno'}`) })).toBeTruthy()
 })
 
 describe('jornadas da área do aluno', () => {
@@ -154,7 +176,7 @@ describe('jornadas da área do aluno', () => {
 
     fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'Fatec!Teste2026' } })
     fireEvent.click(screen.getByText('Entrar', { selector: 'button[type="submit"]' }))
-    expect(await screen.findByRole('button', { name: 'Sair' })).toBeTruthy()
+    fireEvent.click(await screen.findByRole('button', { name: /Perfil de Ada, Aluno/ }))
     expect(localStorage.getItem('ac-token')).toBe('novo-token')
     fireEvent.click(screen.getByRole('button', { name: 'Sair' }))
     expect(screen.getByRole('link', { name: 'Entrar' })).toBeTruthy()
@@ -207,7 +229,6 @@ describe('jornadas da área do aluno', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     renderApp()
-    fireEvent.click(screen.getByRole('button', { name: 'Minha área' }))
     fireEvent.click(await screen.findByRole('link', { name: 'Minhas inscrições' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Cancelar inscrição' }))
 

@@ -9,7 +9,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   timeout: 60000,
-  use: { baseURL: `http://127.0.0.1:${webPort}`, trace: 'retain-on-failure' },
+  use: { baseURL: `http://127.0.0.1:${webPort}`, channel: process.env.E2E_BROWSER_CHANNEL, trace: 'retain-on-failure' },
   webServer: {
     command: `npm run dev -- --port ${webPort} --strictPort`,
     url: `http://127.0.0.1:${webPort}`,

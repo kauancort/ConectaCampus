@@ -1,5 +1,3 @@
-.professor-registration .professor-header { justify-content: space-between; }
-.professor-registration .professor-header nav { flex: 1; }
 .professor-registration .professor-content { max-width: 920px; }
 .professor-registration .registration-panel { padding: clamp(18px, 4vw, 32px); }
 .professor-registration .form-intro { margin-bottom: 24px; }
@@ -47,8 +45,6 @@
 @keyframes professor-spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 560px) {
-  .professor-registration .professor-header { align-items: center; }
-  .professor-registration .professor-header nav { order: 3; flex-basis: 100%; }
   .professor-registration .time-fields { grid-template-columns: 1fr; }
   .professor-registration .form-actions, .professor-registration .submit-button { width: 100%; }
   .professor-activities .activities-content { width: calc(100% - 28px); }
